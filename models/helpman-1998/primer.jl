@@ -13,7 +13,11 @@ function load_dir(dir::String)
     end
 end
 
-cd("D:/Dropbox/learn-julia/qse/models/helpman-1998/")
+try 
+    cd("D:/Dropbox/learn-julia/qse/models/helpman-1998/")
+catch
+    cd("C:/Users/pedro.maia/Dropbox/learn-julia/qse/models/helpman-1998/")
+end
 load_dir("functions")
 
 # ********************
@@ -37,12 +41,20 @@ end
 # ***********************
 # **** Productivity  **** 
 # ***********************
-using CSV ,DataFrames, GeoStats, CairoMakie
+using CSV, DataFrames, GeoStats, CairoMakie
 
-Aᵢ = CSV.read("a.csv", DataFrame; header = false) 
-rename!(Aᵢ,[:Productivity])
+# read productivity data
+data = CSV.read("a.csv", DataFrame; header = false)
+rename!(data,[:Aᵢ])
+# indicate cells identifiers
+data.cell = 1:size(data,1) 
+# construct cells geometries
 grid = CartesianGrid(30, 30)
-Aᵢ = georef(Aᵢ, grid)
+data = georef(data, grid)
+# indicate country flags
+aux = values(data)
+aux.Country = data.cell.∈ Ref(geosplit(data,0.5,(1,0))[1].cell)
+data = georef(aux, grid)
 
 # plotting figure 1
 fig = Figure()
@@ -51,8 +63,8 @@ ax = Axis(fig[1, 1],
               titlealign = :left, 
               xlabel = "Longitude", 
               ylabel = "Latitude")
-viz!(ax, Aᵢ.geometry, color = Aᵢ.Productivity, colormap = :viridis)
-Colorbar(fig[1, 2], limits = (minimum(Aᵢ.Productivity), maximum(Aᵢ.Productivity)), 
+viz!(ax, data.geometry, color = data.Aᵢ, colormap = :viridis)
+Colorbar(fig[1, 2], limits = (minimum(data.Aᵢ), maximum(data.Aᵢ)), 
         colormap = :viridis, flipaxis = true, ticks=-3:1:3, label="Log points", flip_vertical_label=true)
 fig
 
@@ -61,10 +73,9 @@ fig
 # *********************
 
 α = 0.25 # Davis & Ortalo-Magne (2011)
-σ = 5 # Simonovska & Waugh (2014)
+σ = 5.0 # Simonovska & Waugh (2014)
 ϕ = 0.375 # Based on international trade data
 dₙᵢ = distₙᵢ .^ ϕ # trade costs are a constant elasticity function of effective distance by assumption 
-τⁱⁿ = 2 # by assumption
+τᵒ = τⁱ = 2 # by assumption
 
-Aᵢ = @transform(Aᵢ, :center = centroid(:geometry))
-@transform(Aᵢ, :X = first(coordinates(:center)))
+
