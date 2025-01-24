@@ -10,3 +10,6 @@ I am currently in the process of:
 - [ ] "Rotate" the model so that it makes perfect sense in Julia logic
 - [ ] Stress test the model to asses whether some normalizations (that I did not understand the reason behind) are actually necessary.
 
+---
+
+I owe quite a lot to @SebKrantz who also took upon himself to accomplish this challange.
