@@ -124,5 +124,5 @@ LLeast = LL*(sum(fund.Country.==0)/size(values(fund),1))
 
 println(">>>> Start Wage and Population Convergence <<<<")
 
-wᵢ, Lᵢ, πₙᵢ, dom_πₙᵢ, converged, xtic = solveHLwCtyOpen_E(fund,d,τⁱ,bordcty,N*N)
+@time wᵢ, Lᵢ, πₙᵢ, dom_πₙᵢ, converged, xtic = solveHLwCtyOpen_E(fund,d,τⁱ,bordcty,N*N)
 
