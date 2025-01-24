@@ -12,4 +12,4 @@ I am currently in the process of:
 
 ---
 
-I owe quite a lot to @SebKrantz who also took upon himself to accomplish this challange.
+I owe quite a lot to [@SebKrantz](https://github.com/SebKrantz/Quantitative-Spatial-Economics/tree/main/QSE-ARE-2017) who also took upon himself to accomplish this challange.
