@@ -7,10 +7,16 @@ function solveHLwCtyOpen_E(fund, d, τⁱ, τᵒ, noplaces)
     # Extract location characteristics from fundamentals matrix;
     aᵢ = fund.Aᵢ
     H = fund.Area
-    Iwest = fund.Country.==1
-    Ieast = fund.Country.==0
+    #Iwest = fund.Country.==1
+    #Ieast = fund.Country.==0
+    Iwest = falses(N,N) 
+    Ieast = falses(N,N)
+    Iwest[:,1:Int(N/2)] .= 1
+    Ieast[:,Int(N/2+1):N] .= 1
+    Iwest = vec(Iwest)
+    Ieast = vec(Ieast)
     # convergence indicators
-    convergence = πₙᵢ = dom_πₙᵢ = 0
+    converge = πₙᵢ = dom_πₙᵢ = 0
     # Initialization based on a symmetric allocation;
     Lᵢ = ones(noplaces) .* (LL/noplaces)
     wᵢ = ones(noplaces)
@@ -22,8 +28,6 @@ function solveHLwCtyOpen_E(fund, d, τⁱ, τᵒ, noplaces)
     # ******************************************************
 
     x = 1
-    wind = findall(Iwest .== 1) # returns the cell indices where Iwest is true 
-    eind = findall(Ieast .== 1)
 
     while x < 200000
         # Trade share (we are looking a equation 9.)
@@ -41,10 +45,10 @@ function solveHLwCtyOpen_E(fund, d, τⁱ, τᵒ, noplaces)
         num = ((aᵢ .^ α) .* (H .^ (1-α)) .* (dom_πₙᵢ .^ (-α/(σ-1)))) .^ ((σ-1)/((σ*(1-α))-1))
         # imposing population immobility across countries (by assumption)
         λₙ = Lₑ = zeros(noplaces)
-        λₙ[wind] = num[wind] ./ sum(num[wind])
-        λₙ[eind] = num[eind] ./ sum(num[eind])
-        Lₑ[wind] = λₙ[wind] .* LLwest
-        Lₑ[wind] = λₙ[eind] .* LLeast
+        λₙ[Iwest] = num[Iwest] ./ sum(num[Iwest])
+        λₙ[Ieast] = num[Ieast] ./ sum(num[Ieast])
+        Lₑ[Iwest] = λₙ[Iwest] .* LLwest
+        Lₑ[Ieast] = λₙ[Ieast] .* LLeast
         
         # Convergence criterion
         income_r = round.(income .* (10^6))
@@ -61,12 +65,12 @@ function solveHLwCtyOpen_E(fund, d, τⁱ, τᵒ, noplaces)
             converge = 1;
         else
             wₑ = wᵢ .* (expend./income) .^ (1/(σ-1)) # Idk where it comes from
-            wᵢ = α .* wₑ + (1-α) .* wᵢ # Idk, probably wouldn't matter
-            Lᵢ = α .* Lₑ + (1-α) .* Lᵢ # Idk, probably wouldn't matter
+            wᵢ = ((1-α) .* wₑ) + (α .* wᵢ) # Idk, probably wouldn't matter
+            Lᵢ = ((1-α) .* Lₑ) + (α .* Lᵢ) # Idk, probably wouldn't matter
 
             # Normalization! Choosing geometric mean wage in West as numeraire
-            wᵢ = wᵢ ./ geomean(wᵢ[wind])
-            converge = 0
+            wᵢ[Iwest] = wᵢ[Iwest] ./ geomean(wᵢ[Iwest])
+            converge = 0;
             x=x+1;
         end
     end
