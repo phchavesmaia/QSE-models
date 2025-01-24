@@ -10,7 +10,7 @@ function solveHLwCtyOpen_E(fund, d, τⁱ, τᵒ, noplaces)
     Iwest = fund.Country.==1
     Ieast = fund.Country.==0
     # convergence indicators
-    convergence = πₙᵢ = dom_πₙᵢ = 0
+    converge = πₙᵢ = dom_πₙᵢ = 0
     # Initialization based on a symmetric allocation;
     Lᵢ = ones(noplaces) .* (LL/noplaces)
     wᵢ = ones(noplaces)
@@ -44,7 +44,7 @@ function solveHLwCtyOpen_E(fund, d, τⁱ, τᵒ, noplaces)
         λₙ[wind] = num[wind] ./ sum(num[wind])
         λₙ[eind] = num[eind] ./ sum(num[eind])
         Lₑ[wind] = λₙ[wind] .* LLwest
-        Lₑ[wind] = λₙ[eind] .* LLeast
+        Lₑ[eind] = λₙ[eind] .* LLeast
         
         # Convergence criterion
         income_r = round.(income .* (10^6))
@@ -61,12 +61,12 @@ function solveHLwCtyOpen_E(fund, d, τⁱ, τᵒ, noplaces)
             converge = 1;
         else
             wₑ = wᵢ .* (expend./income) .^ (1/(σ-1)) # Idk where it comes from
-            wᵢ = α .* wₑ + (1-α) .* wᵢ # Idk, probably wouldn't matter
-            Lᵢ = α .* Lₑ + (1-α) .* Lᵢ # Idk, probably wouldn't matter
+            wᵢ = (α .* wₑ) + ((1-α) .* wᵢ) # Idk, probably wouldn't matter
+            Lᵢ = (α .* Lₑ) + ((1-α) .* Lᵢ) # Idk, probably wouldn't matter
 
             # Normalization! Choosing geometric mean wage in West as numeraire
-            wᵢ = wᵢ ./ geomean(wᵢ[wind])
-            converge = 0
+            wᵢ[wind] = wᵢ[wind] ./ geomean(wᵢ[wind])
+            converge = 0;
             x=x+1;
         end
     end

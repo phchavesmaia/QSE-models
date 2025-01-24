@@ -43,10 +43,9 @@ end
 # ***********************
 using CSV, DataFrames, GeoStats, CairoMakie
 
-# read productivity data
+# read productivity data 
 fund = CSV.read("a.csv", DataFrame; header = false)
 rename!(fund,[:Aᵢ])
-fund.Aᵢ = exp.(fund.Aᵢ)
 # indicate cells identifiers
 fund.cell = 1:size(fund,1) 
 # construct cells geometries
@@ -57,9 +56,12 @@ aux = values(fund)
 aux.Country = fund.cell.∈ Ref(geosplit(fund,0.5,(1,0))[1].cell)
 # cell area 
 aux.Area = 100 * ones(N*N)
+# exponentiate and normalize productivity shocks
+aux.Aᵢ = exp.(aux.Aᵢ)
+aux.Aᵢ[aux.Country.==1] = aux.Aᵢ[aux.Country.==1] ./ geomean(aux.Aᵢ[aux.Country.==1])
+aux.Aᵢ[aux.Country.==0] = aux.Aᵢ[aux.Country.==0] ./ geomean(aux.Aᵢ[aux.Country.==0])
 # back with the geometry
 fund = georef(aux, grid)
-
 
 # plotting figure 1
 fig = Figure()
@@ -79,7 +81,9 @@ fig
 
 α = 0.75 # Davis & Ortalo-Magne (2011)
 σ = 5.0 # Simonovska & Waugh (2014)
-ϕ = 0.375 # Based on international trade data
+#ϕ = 0.375 # Based on international trade data
+ϕ = 0.33 # Based on international trade data
+
 d = dist .^ ϕ # trade costs are a constant elasticity function of effective distance by assumption
 d[diagind(d)] .= 1 # iceberg transport costs are one
 # cell trade tax
@@ -102,5 +106,5 @@ LLeast = LL*(sum(fund.Country.==0)/size(values(fund),1))
 
 println(">>>> Start Wage and Population Convergence <<<<")
 
-wᵢ, Lᵢ, πₙᵢ, dom_πₙᵢ, converge, xtic = solveHLwCtyOpen_E(fund,d,τⁱ,τᵒ,N*N)
+wᵢ, Lᵢ, πₙᵢ, dom_πₙᵢ, converged, xtic = solveHLwCtyOpen_E(fund,d,τⁱ,τᵒ,N*N)
 
