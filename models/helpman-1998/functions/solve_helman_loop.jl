@@ -49,6 +49,6 @@ function solveHLwCtyOpen_loop(Lᵢ, wᵢ, aᵢ, dd, noplaces, Iwest, Ieast, H, x
         x = x + 1
     end
 
-    return x, wᵢ, Lᵢ, πₙᵢ, dom_πₙᵢ, converge
+    return x, wᵢ, Lᵢ, πₙᵢ, converge
 
 end

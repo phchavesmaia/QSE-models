@@ -62,7 +62,6 @@ aux.Aᵢ = exp.(aux.Aᵢ)
 aux.Aᵢ[aux.Country.==1] = aux.Aᵢ[aux.Country.==1] ./ geomean(aux.Aᵢ[aux.Country.==1])
 aux.Aᵢ[aux.Country.==0] = aux.Aᵢ[aux.Country.==0] ./ geomean(aux.Aᵢ[aux.Country.==0])
 [mean(aux.Aᵢ) std(aux.Aᵢ) maximum(aux.Aᵢ) minimum(aux.Aᵢ)]
-aux.Aᵢ = vec(reshape(transpose(reshape(fund.Aᵢ,30,30)),900)) # reshape back so that the plot is right
 # back with the geometry
 fund = georef(aux, grid)
 
@@ -86,33 +85,15 @@ fig
 σ = 5.0 # Simonovska & Waugh (2014)
 #ϕ = 0.375 # Based on international trade data
 ϕ = 0.33 # Based on international trade data
-
 d = dist .^ ϕ # trade costs are a constant elasticity function of effective distance by assumption
 d[diagind(d)] .= 1 # iceberg transport costs are one
-# cell trade tax
-τⁱ = ones(N*N,N*N).*2 # by assumption
+τⁱ = ones(N*N,N*N).*2 # # cell trade tax (by assumption)
 τⁱ[diagind(τⁱ)] .= 1 # by construction
 τⁱ = τⁱ .- 1
-
-# so that it makes sense with matlab stuff
-# Define "east" (actually north) and "west" as two countries
-Iwest = falses(N,N) 
-Ieast = falses(N,N)
-Iwest[:,1:Int(N/2)] .= 1
-Ieast[:,Int(N/2+1):N] .= 1
-Iwest = vec(Iwest)
-Ieast = vec(Ieast)
-
-bordcty = ones(N*N,N*N)
-bordcty[Iwest,Ieast].=2;
-bordcty[Ieast,Iwest].=2;
-bordcty = bordcty .- 1
-# country trade tax
-τᵒ = ones(N*N,N*N)
+τᵒ = ones(N*N,N*N) # country trade tax (by assumption)
 τᵒ[fund.Country.==1,fund.Country.==0] .=2 # east to west
 τᵒ[fund.Country.==0,fund.Country.==1] .=2 # west to east
 τᵒ = τᵒ .- 1
-
 F = 1.0 # production fixed cost
 LL=153889 # US civilian labor force 2010 (Statistical Abstract, millions)
 LLwest = LL*(sum(fund.Country.==1)/size(values(fund),1))
@@ -124,5 +105,13 @@ LLeast = LL*(sum(fund.Country.==0)/size(values(fund),1))
 
 println(">>>> Start Wage and Population Convergence <<<<")
 
-@time wᵢ, Lᵢ, πₙᵢ, dom_πₙᵢ, converged, xtic = solveHLwCtyOpen_E(fund,d,τⁱ,bordcty,N*N)
+@time wᵢ, Lᵢ, πₙᵢ, converged = solveHLwCtyOpen_E(fund,d,τⁱ,τᵒ,N*N)
 
+# prices, rents, real wage, and
+Pₙ = Hpindex(fund,Lᵢ,wᵢ,πₙᵢ)
+rₙ = Hlandprice(fund,Lᵢ,wᵢ)  
+V̅ = Hrealw(fund,Lᵢ,πₙᵢ)
+
+# ************************************************************************;
+# ***** Counterfactual Eliminating Border Frictions Between Countries ****;
+# ************************************************************************;
