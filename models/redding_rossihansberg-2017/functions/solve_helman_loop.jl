@@ -40,8 +40,8 @@ function solveHLwCtyOpen_loop(Lᵢ, wᵢ, aᵢ, dd, noplaces, Iwest, Ieast, H, x
         converge = 1
     else
         wₑ = wᵢ .* (expend ./ income) .^ (1/(σ-1))
-        wᵢ = ((1-α) .* wₑ) + (α .* wᵢ)
-        Lᵢ = ((1-α) .* Lₑ) + (α .* Lᵢ)
+        wᵢ = (0.25 .* wₑ) + (0.75 .* wᵢ) # dampening, see https://raw.githack.com/AEM7130/class-repo/master/lecture-notes/04-optimization/04-optimization.html#56
+        Lᵢ = (0.25 .* Lₑ) + (0.75 .* Lᵢ) # dampening see https://raw.githack.com/AEM7130/class-repo/master/lecture-notes/04-optimization/04-optimization.html#56
 
         # Normalization! Choosing geometric mean wage in West as numeraire
         wᵢ[Iwest] = wᵢ[Iwest] ./ geomean(wᵢ[Iwest])

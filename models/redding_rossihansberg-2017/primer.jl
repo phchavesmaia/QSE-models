@@ -14,9 +14,9 @@ function load_dir(dir::String)
 end
 
 try 
-    cd("D:/Dropbox/learn-julia/qse/models/helpman-1998/")
+    cd("D:/Dropbox/learn-julia/qse/models/redding_rossihansberg-2017/")
 catch
-    cd("C:/Users/pedro.maia/Dropbox/learn-julia/qse/models/helpman-1998/")
+    cd("C:/Users/pedro.maia/Dropbox/learn-julia/qse/models/redding_rossihansberg-2017/")
 end
 load_dir("functions")
 
