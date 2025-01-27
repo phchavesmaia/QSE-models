@@ -110,7 +110,7 @@ println(">>>> Start Wage and Population Convergence <<<<")
 
 @time wᵢ, Lᵢ, πₙᵢ, converged = solveHLwCtyOpen_E(fund,d,τⁱ,τᵒ,N*N)
 
-# prices, rents, real wage, and
+# prices, rents, and real wage
 Pₙ = Hpindex(fund,Lᵢ,wᵢ,πₙᵢ)
 rₙ = Hlandprice(fund,Lᵢ,wᵢ)  
 V̅ = Hrealw(fund,Lᵢ,πₙᵢ)
@@ -122,3 +122,31 @@ eq_plots(Lᵢ,wᵢ,rₙ,Pₙ)
 # ***** Counterfactual Eliminating Border Frictions Between Countries ****;
 # ************************************************************************;
 
+τᵒᶜ = ones(N*N,N*N) # counterfactual tax regime
+
+println(">>>> Start Wage and Population Convergence <<<<")
+
+@time wᵢᶜ, Lᵢᶜ, πₙᵢᶜ, convergedᶜ =solveHLwCtyOpen_E(fund,d,τⁱ,τᵒᶜ,N*N)
+
+# prices, rents, and real wage
+Pₙᶜ = Hpindex(fund,Lᵢᶜ,wᵢᶜ,πₙᵢᶜ)
+rₙᶜ = Hlandprice(fund,Lᵢᶜ,wᵢᶜ)  
+V̅ᶜ = Hrealw(fund,Lᵢᶜ,πₙᵢᶜ)
+
+# exact hat algebra 
+L̂ᵢ=Lᵢᶜ./Lᵢ 
+ŵᵢ=wᵢᶜ./wᵢ 
+r̂ₙ=rₙᶜ./rₙ 
+P̂ₙ=Pₙᶜ./Pₙ
+
+# exact hat algebra of welfare (welfare gains)
+V̂ = V̅ᶜ./V̅
+V̂=round.(V̂, digits=4)
+round.(unique(V̂[fund.Country.==0].-1)*100,digits=1)
+
+
+# plotting figure 3
+eq_plots(L̂ᵢ,ŵᵢ,r̂ₙ,P̂ₙ,suffix="_counterfactual")
+
+# table 1
+sum(V̂[fund.Country.==1])

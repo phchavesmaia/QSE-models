@@ -1,4 +1,4 @@
-function eq_plots(Lᵢ,wᵢ,rₙ,Pₙ,suffix="",dpi=900)
+function eq_plots(Lᵢ,wᵢ,rₙ,Pₙ;suffix::String="",dpi::Int64=900)
     " 
     This function is dependent on importing CairoMakie as Mke
     "
