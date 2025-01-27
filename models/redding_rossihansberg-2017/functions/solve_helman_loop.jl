@@ -39,12 +39,12 @@ function solveHLwCtyOpen_loop(Lᵢ, wᵢ, aᵢ, dd, noplaces, Iwest, Ieast, H, x
         x = 10000000
         converge = 1
     else
-        wₑ = wᵢ .* (expend ./ income) .^ (1/(σ-1))
+        wₑ = wᵢ .* (expend ./ income) .^ (1/(σ-1)) # If expenditure > (<) income, we need to increase (reduce) the wage. The exponent is mysterious though...
         wᵢ = (0.25 .* wₑ) + (0.75 .* wᵢ) # dampening, see https://raw.githack.com/AEM7130/class-repo/master/lecture-notes/04-optimization/04-optimization.html#56
         Lᵢ = (0.25 .* Lₑ) + (0.75 .* Lᵢ) # dampening see https://raw.githack.com/AEM7130/class-repo/master/lecture-notes/04-optimization/04-optimization.html#56
 
         # Normalization! Choosing geometric mean wage in West as numeraire
-        wᵢ[Iwest] = wᵢ[Iwest] ./ geomean(wᵢ[Iwest])
+        wᵢ[Iwest] = wᵢ[Iwest] ./ geomean(wᵢ[Iwest]) # I didn't really understood why the numerator is only in west...
         converge = 0
         x = x + 1
     end

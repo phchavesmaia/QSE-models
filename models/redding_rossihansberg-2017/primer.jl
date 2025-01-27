@@ -68,18 +68,17 @@ aux.Aᵢ[aux.Country.==0] = aux.Aᵢ[aux.Country.==0] ./ geomean(aux.Aᵢ[aux.Co
 fund = georef(aux, grid)
 
 # plotting figure 1
-fig = Mke.Figure(size=(600,500))
+fig1 = Mke.Figure(size=(600,500))
 ax = Axis(fig[1, 1], 
-              title = "Log productivity",
-              titlealign = :left, 
-              xlabel = "Longitude", 
-              ylabel = "Latitude")
+            title = "Log productivity",
+            titlealign = :left, 
+            xlabel = "Longitude", 
+            ylabel = "Latitude")
 viz!(ax, fund.geometry, color = log.(fund.Aᵢ), colormap = :viridis)
 Colorbar(fig[1, 2], limits = (minimum(log.(fund.Aᵢ)), maximum(log.(fund.Aᵢ))), 
         colormap = :viridis, flipaxis = true, ticks=-3:1:3, label="Log points", flip_vertical_label=true)
-fig
-save("./figures/productivity.png", fig, px_per_unit = 900/96) #900 dpi
-
+fig1
+save("./figures/productivity.png", fig1, px_per_unit = 900/96) #900 dpi
 
 # *********************
 # **** Parameters  **** 
@@ -111,52 +110,13 @@ println(">>>> Start Wage and Population Convergence <<<<")
 
 @time wᵢ, Lᵢ, πₙᵢ, converged = solveHLwCtyOpen_E(fund,d,τⁱ,τᵒ,N*N)
 
-## prices, rents, real wage, and
+# prices, rents, real wage, and
 Pₙ = Hpindex(fund,Lᵢ,wᵢ,πₙᵢ)
 rₙ = Hlandprice(fund,Lᵢ,wᵢ)  
 V̅ = Hrealw(fund,Lᵢ,πₙᵢ)
 
-## plotting figure 2
-fig = Mke.Figure(size = (1100, 1000))
-# population
-ax = Axis(fig[1, 1], 
-              title = "Log population",
-              titlealign = :left, 
-              xlabel = "Longitude", 
-              ylabel = "Latitude")
-viz!(ax, fund.geometry, color = log.(Lᵢ), colormap = :viridis)
-Colorbar(fig[1, 2], limits = (minimum(log.(Lᵢ)), maximum(log.(Lᵢ))), 
-        colormap = :viridis, flipaxis = true, ticks=range(round(minimum(log.(Lᵢ))), round(maximum(log.(Lᵢ))), step=2), flip_vertical_label=true)
-# wages
-ax = Axis(fig[1, 3], 
-              title = "Log wages",
-              titlealign = :left, 
-              xlabel = "Longitude", 
-              ylabel = "Latitude")
-viz!(ax, fund.geometry, color = log.(wᵢ), colormap = :viridis)
-Colorbar(fig[1, 4], limits = (minimum(log.(wᵢ)), maximum(log.(wᵢ))), 
-        colormap = :viridis, flipaxis = true, ticks=range(round(minimum(log.(wᵢ))), round(maximum(log.(wᵢ))), step=1), label="Log points", flip_vertical_label=true)
-# land prices
-ax = Axis(fig[2, 1], 
-              title = "Log land prices",
-              titlealign = :left, 
-              xlabel = "Longitude", 
-              ylabel = "Latitude")
-viz!(ax, fund.geometry, color = log.(rₙ), colormap = :viridis)
-Colorbar(fig[2, 2], limits = (minimum(log.(rₙ)), maximum(log.(rₙ))), 
-        colormap = :viridis, flipaxis = true, ticks=range(round(minimum(log.(rₙ))), round(maximum(log.(rₙ))), step=5), flip_vertical_label=true)
-# price index
-ax = Axis(fig[2, 3], 
-              title = "Log price index",
-              titlealign = :left, 
-              xlabel = "Longitude", 
-              ylabel = "Latitude")
-viz!(ax, fund.geometry, color = log.(Pₙ), colormap = :viridis)
-Colorbar(fig[2, 4], limits = (minimum(log.(Pₙ)), maximum(log.(Pₙ))), 
-        colormap = :viridis, flipaxis = true, ticks=range(round(minimum(log.(Pₙ))), round(maximum(log.(Pₙ))), step=0.2), label="Log points", flip_vertical_label=true)
-fig
-save("./figures/equilibrium.png", fig, px_per_unit = 900/96) #900 dpi
-
+# plotting figure 2
+eq_plots(Lᵢ,wᵢ,rₙ,Pₙ)
 
 # ************************************************************************;
 # ***** Counterfactual Eliminating Border Frictions Between Countries ****;
