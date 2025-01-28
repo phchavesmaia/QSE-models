@@ -1,3 +1,5 @@
+# Redding and Rossi-Hansberg (2017) 
+
 This is my attempt to replicate Redding and Rossi-Hansberg (2017) implementation of the Helpman (1998) model in Julia. Notably, the biggest changes I have made in the code logic were:
 
 1. Create the distance matrix using a graph (network) structure instead of the matricial distances
