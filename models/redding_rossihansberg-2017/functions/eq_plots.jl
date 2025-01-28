@@ -13,7 +13,7 @@ function eq_plots(Lᵢ,wᵢ,rₙ,Pₙ;suffix::String="",dpi::Int64=900)
                 ylabel = "Latitude")
     viz!(ax, fund.geometry, color = log.(Lᵢ), colormap = :viridis)
     Colorbar(fig[1, 2], limits = (minimum(log.(Lᵢ)), maximum(log.(Lᵢ))), 
-            colormap = :viridis, flipaxis = true, ticks=range(round(minimum(log.(Lᵢ))), round(maximum(log.(Lᵢ))), step=2), flip_vertical_label=true)
+            colormap = :viridis, flipaxis = true, ticks=range(round(minimum(log.(Lᵢ))), round(maximum(log.(Lᵢ))), length=5), flip_vertical_label=true)
     # wages
     ax = Axis(fig[1, 3], 
                 title = "Log wages",
@@ -22,7 +22,7 @@ function eq_plots(Lᵢ,wᵢ,rₙ,Pₙ;suffix::String="",dpi::Int64=900)
                 ylabel = "Latitude")
     viz!(ax, fund.geometry, color = log.(wᵢ), colormap = :viridis)
     Colorbar(fig[1, 4], limits = (minimum(log.(wᵢ)), maximum(log.(wᵢ))), 
-            colormap = :viridis, flipaxis = true, ticks=range(round(minimum(log.(wᵢ))), round(maximum(log.(wᵢ))), step=1), label="Log points", flip_vertical_label=true)
+            colormap = :viridis, flipaxis = true, ticks=range(round(minimum(log.(wᵢ))), round(maximum(log.(wᵢ))), length=5), label="Log points", flip_vertical_label=true)
     # land prices
     ax = Axis(fig[2, 1], 
                 title = "Log land prices",
@@ -31,7 +31,7 @@ function eq_plots(Lᵢ,wᵢ,rₙ,Pₙ;suffix::String="",dpi::Int64=900)
                 ylabel = "Latitude")
     viz!(ax, fund.geometry, color = log.(rₙ), colormap = :viridis)
     Colorbar(fig[2, 2], limits = (minimum(log.(rₙ)), maximum(log.(rₙ))), 
-            colormap = :viridis, flipaxis = true, ticks=range(round(minimum(log.(rₙ))), round(maximum(log.(rₙ))), step=5), flip_vertical_label=true)
+            colormap = :viridis, flipaxis = true, ticks=range(round(minimum(log.(rₙ))), round(maximum(log.(rₙ))), length=5), flip_vertical_label=true)
     # price index
     ax = Axis(fig[2, 3], 
                 title = "Log price index",
@@ -40,10 +40,8 @@ function eq_plots(Lᵢ,wᵢ,rₙ,Pₙ;suffix::String="",dpi::Int64=900)
                 ylabel = "Latitude")
     viz!(ax, fund.geometry, color = log.(Pₙ), colormap = :viridis)
     Colorbar(fig[2, 4], limits = (minimum(log.(Pₙ)), maximum(log.(Pₙ))), 
-            colormap = :viridis, flipaxis = true, ticks=range(round(minimum(log.(Pₙ))), round(maximum(log.(Pₙ))), step=0.2), label="Log points", flip_vertical_label=true)
-    fig
-    
-
+            colormap = :viridis, flipaxis = true, ticks=range(round(minimum(log.(Pₙ))), round(maximum(log.(Pₙ))), length=5), label="Log points", flip_vertical_label=true)
+ 
     return save(string("./figures/equilibrium",suffix,".png"), fig, px_per_unit = dpi/96)
 
 end

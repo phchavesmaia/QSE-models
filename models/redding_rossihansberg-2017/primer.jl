@@ -44,7 +44,6 @@ end
 using CSV, DataFrames, GeoStats
 import CairoMakie as Mke
 
-
 # read productivity data 
 fund = CSV.read("a.csv", DataFrame; header = false)
 rename!(fund,[:Aᵢ])
@@ -69,15 +68,14 @@ fund = georef(aux, grid)
 
 # plotting figure 1
 fig1 = Mke.Figure(size=(600,500))
-ax = Axis(fig[1, 1], 
+ax = Axis(fig1[1, 1], 
             title = "Log productivity",
             titlealign = :left, 
             xlabel = "Longitude", 
             ylabel = "Latitude")
 viz!(ax, fund.geometry, color = log.(fund.Aᵢ), colormap = :viridis)
-Colorbar(fig[1, 2], limits = (minimum(log.(fund.Aᵢ)), maximum(log.(fund.Aᵢ))), 
+Colorbar(fig1[1, 2], limits = (minimum(log.(fund.Aᵢ)), maximum(log.(fund.Aᵢ))), 
         colormap = :viridis, flipaxis = true, ticks=-3:1:3, label="Log points", flip_vertical_label=true)
-fig1
 save("./figures/productivity.png", fig1, px_per_unit = 900/96) #900 dpi
 
 # *********************
@@ -118,9 +116,9 @@ V̅ = Hrealw(fund,Lᵢ,πₙᵢ)
 # plotting figure 2
 eq_plots(Lᵢ,wᵢ,rₙ,Pₙ)
 
-# ************************************************************************;
-# ***** Counterfactual Eliminating Border Frictions Between Countries ****;
-# ************************************************************************;
+# ************************************************************************
+# ***** Counterfactual Eliminating Border Frictions Between Countries ****
+# ************************************************************************
 
 τᵒᶜ = ones(N*N,N*N) # counterfactual tax regime
 
@@ -140,13 +138,51 @@ r̂ₙ=rₙᶜ./rₙ
 P̂ₙ=Pₙᶜ./Pₙ
 
 # exact hat algebra of welfare (welfare gains)
-V̂ = V̅ᶜ./V̅
-V̂=round.(V̂, digits=4)
-round.(unique(V̂[fund.Country.==0].-1)*100,digits=1)
-
+V̂ = Hwelfaregains(πₙᵢ,πₙᵢᶜ,L̂ᵢ)
+V̂ = round.(V̂, digits=4)
 
 # plotting figure 3
 eq_plots(L̂ᵢ,ŵᵢ,r̂ₙ,P̂ₙ,suffix="_counterfactual")
 
 # table 1
 sum(V̂[fund.Country.==1])
+
+# **************************************************************************
+# ***** Counterfactual Eliminating Border Frictions Between Grid Points ****
+# **************************************************************************
+
+τⁱᵪ = ones(N*N,N*N) # counterfactual tax regime
+
+@time wᵢᵪ , Lᵢᵪ, πₙᵢᵪ, convergedᵪ =solveHLwCtyOpen_E(fund,d,τⁱᵪ,τᵒ,N*N)
+
+# prices, rents, and real wage
+Pₙᵪ = Hpindex(fund,Lᵢᵪ,wᵢᵪ,πₙᵢᵪ)
+rₙᵪ = Hlandprice(fund,Lᵢᵪ,wᵢᵪ)  
+V̅ᵪ = Hrealw(fund,Lᵢᵪ,πₙᵢᵪ)
+
+# exact hat algebra 
+L̂ᵢᵪ=Lᵢᵪ./Lᵢ 
+ŵᵢᵪ=wᵢᵪ./wᵢ 
+r̂ₙᵪ=rₙᵪ./rₙ 
+P̂ₙᵪ=Pₙᵪ./Pₙ
+
+# exact hat algebra of welfare (welfare gains)
+V̂ᵪ = Hwelfaregains(πₙᵢ,πₙᵢᵪ,L̂ᵢᵪ)
+V̂ᵪ = round.(V̂ᵪ, digits=4)
+
+# plotting figure 4
+eq_plots(L̂ᵢᵪ,ŵᵢᵪ,r̂ₙᵪ,P̂ₙᵪ,suffix="_counterfactual2")
+
+# **********************************************
+# ***** Counterfactual Scenarios Comparison ****
+# **********************************************
+using DelimitedFiles
+
+# Table 1
+
+labs = ["External liberalization" ; "Internal liberalization"]
+
+tab = [round.(unique(V̂[fund.Country.==1].-1)*100,digits=1)[1,1] round.(unique(V̂[fund.Country.==0].-1)*100,digits=1)[1,1];
+        round.(unique(V̂ᵪ[fund.Country.==1].-1)*100,digits=1)[1,1] round.(unique(V̂ᵪ[fund.Country.==0].-1)*100,digits=1)[1,1]]
+
+fragment_table(labs,tab,"tab1", path="./tables/")

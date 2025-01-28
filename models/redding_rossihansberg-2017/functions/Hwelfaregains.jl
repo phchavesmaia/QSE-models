@@ -1,11 +1,11 @@
-function Hwelfaregains(πₙᵢ,πₙᵢᶜ,Lᵢ,Lᵢᶜ)
+function Hwelfaregains(πₙᵢ,πₙᵢᶜ,L̂ᵢ)
     "
-    α and σ are assumed to be global variables // NOT WORKING!!
+    α and σ are assumed to be global variables
     "
     # defining domestic trade shares
-    πₙₙ = diag(πₙᵢ); πₙₙᶜ = diag(πₙᵢᶜ);
+    πₙₙ = diag(πₙᵢ); πₙₙᶜ = diag(πₙᵢᶜ); π̂ₙₙ = πₙₙᶜ ./ πₙₙ;
 
-    V̅̂ = ((πₙₙ./πₙₙᶜ).^(α/σ-1)).*((Lᵢ./Lᵢᶜ).^((σ*(1-α)-1)/(σ-1))) # this is equation 21.
+    V̅̂ = ((1 ./ π̂ₙₙ).^(α/(σ-1))).*((1 ./ L̂ᵢ).^((σ*(1-α)-1)/(σ-1))) # this is equation 21.
     
     return V̅̂
 end
