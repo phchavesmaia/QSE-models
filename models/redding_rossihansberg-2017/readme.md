@@ -13,6 +13,12 @@ I am currently in the process of:
 - [x] Programme the counterfactuals
 - [ ] Stress test the model to asses whether some normalizations (that I did not understand the reason behind) are actually necessary.
 
+## References
+
+Helpman E. (1998). The size of regions. In Topics in Public Economics: Theoretical and Applied Analysis, ed. D Pines, E Sadka, I Zilcha, pp. 33–54. Cambridge, UK: Cambridge Univ. Press. (Working paper version: https://matthewturner.org/ec2410/readings/Helpman_unp_1995.pdf )
+
+Redding, S. J., & Rossi-Hansberg, E. (2017). Quantitative spatial economics. Annual Review of Economics, 9(1), 21-58. https://doi.org/10.1146/annurev-economics-063016-103713
+
 ---
 
 I owe quite a lot to [@SebKrantz](https://github.com/SebKrantz/Quantitative-Spatial-Economics/tree/main/QSE-ARE-2017) who also took upon himself to accomplish this challange.
