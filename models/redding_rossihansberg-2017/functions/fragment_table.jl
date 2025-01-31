@@ -8,8 +8,8 @@ function fragment_table(labs, tab, file_name; path="./")
     elseif typeof(labs) != Vector{String}
         throw("Row lables must be delivered as a column vector")
     else
-        tab_wrapped = ["&\$" * string(tab[i, j]) * "\$" for i in 1:size(tab, 1), j in 1:size(tab, 2)]
-        ending = ["\\\\\\addlinespace" for i in 1:size(tab, 1)]
+        tab_wrapped = ["&\$" * string(tab[i, j]) * "\$" for i in axes(tab,1), j in axes(tab,2)]
+        ending = ["\\\\\\addlinespace" for i in axes(tab,1)]
         f = [labs tab_wrapped ending]
         open(string(path, file_name, ".tex"), "w") do io
             writedlm(io, f, " ")
