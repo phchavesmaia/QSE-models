@@ -82,5 +82,10 @@ baseline = baseline'
 # **** Productivity and Trade Shares from Model Inversion  **** 
 # *************************************************************
 
-@time Aᵢ, πᵢₙ, Pₙ  = solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ)
+@time Aᵢ, πₙᵢ, Pₙ  = solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ)
+println("<<<<<<<<<<<<<<< Data compilation completed >>>>>>>>>>>>>>>")
+
+# *******************************
+# **** Descriptive Analysis  **** 
+# *******************************
 

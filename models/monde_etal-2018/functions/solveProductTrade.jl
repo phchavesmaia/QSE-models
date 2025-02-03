@@ -9,7 +9,7 @@ function solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ)
     "
     Aᵢ0 = ones(J);
     # defining numerator of eq (10):   
-    numerator(Lₙ,wₙ,dₙᵢ,Aᵢ) = (Lₙ.^(1-(1-σ)*ν)) .* ((wₙ .* dₙᵢ ./ Aᵢ) .^ (1-σ)) 
+    numerator(Lₙ,wₙ,dₙᵢ,Aᵢ) = (Lₙ'.^(1-(1-σ)*ν)) .* ((wₙ' .* dₙᵢ ./ Aᵢ') .^ (1-σ)) # observe that labor, wages and productivity change across columns!
     # defining main loop
     err=10000; tol = 1e-6; x = 1; 
     while (err>=tol) & (x<=200000)
@@ -18,8 +18,8 @@ function solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ)
         πₙᵢ = numerator(Lₙ,wₙ,dₙᵢ,Aᵢ0) ./ sum(numerator(Lₙ,wₙ,dₙᵢ,Aᵢ0), dims=2)
         
         # defining income and expenditure, i.e., equation (12) components:
-        income = wₙ .* Lₙ; expenditure = πₙᵢ' * (v̄ₙ .* Rₙ);
-
+        income = wₙ .* Lₙ; expenditure = sum(πₙᵢ .* v̄ₙ .* Rₙ, dims=1)';
+        
         # equation (12) -- equilibrium condition
         err = round.(maximum(abs.(income - expenditure)),digits=6);
 
@@ -33,13 +33,18 @@ function solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ)
         Aᵢ0 = Aᵢ0 ./ mean(Aᵢ0) 
 
         # report convergence ratio
-        println([x, err])
+        #println([x, err])
 
+    end
+
+    # converged?
+    if x==200000
+        error("Convergence not achieved")
     end
 
     # get prices
     Pₙ = (σ/(1-σ)) .* (((Lₙ.^(1-(1-σ)*ν))./(σ.*f.*diag(πₙᵢ))) ) .^ (1/(1-σ)) .* (wₙ .* diag(dₙᵢ) ./ Aᵢ0)
 
-    return Aᵢ, πᵢₙ, Pₙ 
+    return Aᵢ0, πₙᵢ, Pₙ
 
 end

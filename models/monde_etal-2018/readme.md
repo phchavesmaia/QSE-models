@@ -1,6 +1,6 @@
 # Monde, Redding and Rossi-Hansberg (2018)
 
-This folder aims to replicate the Seidel and Wickerath (2020) implementation of the Monde, Redding and Rossi-Hansberg (2018) model in Julia. My efforts are heavily based on Ahfeldt and Seidel (2024) replication toolkit.
+This folder aims to replicate the Seidel and Wickerath (2020) implementation of the Monde, Redding and Rossi-Hansberg (2018) model in Julia. My efforts are heavily based on Ahfeldt and Seidel (2024) replication toolkit, of which I uploaded the corresponding codebook explaining the algorithims in this repository.
 
 ## References
 
