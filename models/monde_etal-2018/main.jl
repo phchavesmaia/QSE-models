@@ -88,4 +88,7 @@ println("<<<<<<<<<<<<<<< Data compilation completed >>>>>>>>>>>>>>>")
 # *******************************
 # **** Descriptive Analysis  **** 
 # *******************************
+using  Plots, GLM, GeoStats, GeoIO
+import CairoMakie as Mke
+
 

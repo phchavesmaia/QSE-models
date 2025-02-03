@@ -68,15 +68,15 @@ fund = georef(aux, grid)
 
 # plotting figure 1
 fig1 = Mke.Figure(size=(600,500))
-ax = Axis(fig1[1, 1], 
+ax = Mke.Axis(fig1[1, 1], 
             title = "Log productivity",
             titlealign = :left, 
             xlabel = "Longitude", 
             ylabel = "Latitude")
 viz!(ax, fund.geometry, color = log.(fund.Aᵢ), colormap = :viridis)
-Colorbar(fig1[1, 2], limits = (minimum(log.(fund.Aᵢ)), maximum(log.(fund.Aᵢ))), 
+Mke.Colorbar(fig1[1, 2], limits = (minimum(log.(fund.Aᵢ)), maximum(log.(fund.Aᵢ))), 
         colormap = :viridis, flipaxis = true, ticks=-3:1:3, label="Log points", flip_vertical_label=true)
-save("./figures/productivity.png", fig1, px_per_unit = 900/96) #900 dpi
+Mke.save("./figures/productivity.png", fig1, px_per_unit = 900/96) #900 dpi
 
 # *********************
 # **** Parameters  **** 
