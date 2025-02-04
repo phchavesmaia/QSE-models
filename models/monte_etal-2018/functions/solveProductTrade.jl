@@ -7,7 +7,7 @@ function solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ)
     
     This is fundamentally based on Eqs. (10) and (12) of SW
     "
-    Aᵢ0 = ones(J); πₙᵢ = ones(J,J);
+    J = size(Lₙ,1); Aᵢ0 = ones(J); πₙᵢ = ones(J,J);
     # defining numerator of eq (10):   
     num(Lₙ,wₙ,dₙᵢ,Aᵢ) = (Lₙ'.^(1-(1-σ)*ν)) .* ((wₙ' .* dₙᵢ ./ Aᵢ') .^ (1-σ)) # observe that labor, wages and productivity change across columns!
     # defining main loop

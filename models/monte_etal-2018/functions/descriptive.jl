@@ -1,4 +1,4 @@
-function descriptive_analysis(Lₙ, Areaₙ, Rₙ, distₙᵢ, comMat, Aᵢ)    
+function descriptive_analysis(Lₙ, Areaₙ, Rₙ, distₙᵢ, comMat, Aᵢ, baseline, λₙᵢ)    
     
     # Compute densities
     lEmpDensity_n = log.(Lₙ) .- log.(Areaₙ)

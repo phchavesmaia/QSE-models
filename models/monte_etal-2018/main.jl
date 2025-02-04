@@ -19,9 +19,9 @@ function load_dir(dir::String)
 end
 
 try 
-    cd("D:/Dropbox/learn-julia/qse/models/monde_etal-2018/")
+    cd("D:/Dropbox/learn-julia/qse/models/monte_etal-2018/")
 catch
-    cd("C:/Users/pedro.maia/Dropbox/learn-julia/qse/models/monde_etal-2018/")
+    cd("C:/Users/pedro.maia/Dropbox/learn-julia/qse/models/monte_etal-2018/")
 end
 load_dir("functions")
 
@@ -90,7 +90,7 @@ println("<<<<<<<<<<<<<<< Data compilation completed >>>>>>>>>>>>>>>")
 # **** Descriptive Analysis  **** 
 # *******************************
 
-descriptive_analysis(Lₙ, Areaₙ, Rₙ, distₙᵢ, comMat, Aᵢ)
+descriptive_analysis(Lₙ, Areaₙ, Rₙ, distₙᵢ, comMat, Aᵢ, baseline, λₙᵢ)
 
 # **************************
 # **** Counterfactuals  **** 
@@ -118,3 +118,9 @@ BorderDist_n[east.==0] = -abs.(BorderDist_n[east.==0]) # value 0 in the center o
 
 # -------------- Counterfactual Estimation --------------
 
+# Creating a *trade* border between East and West Germany
+d̂ₙᵢ = ones(size(dₙᵢ))
+d̂ₙᵢ[conditionMatrix.==1] .= 1000 # Set border cost in trade to large value
+
+# estimating counterfactual variables 
+@time ŵₙ, v̄̂ₙ, P̂ₕₙ, π̂ₙᵢ, λ̂ₙᵢ, P̂ₙ, R̂ₙ, L̂ₙ, Ū̂ = counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ, d̂ₙᵢ=d̂ₙᵢ)
