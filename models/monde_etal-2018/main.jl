@@ -6,6 +6,8 @@ SW = Seidel and Wickerath
 # *********************
 # **** Load Files  **** 
 # *********************
+using  Plots, FixedEffectModels, GeoStats, GeoIO, CSV, DataFrames, Statistics, LinearAlgebra, GLM
+import CairoMakie as Mke
 
 function load_dir(dir::String)
     files = readdir(dir)
@@ -32,8 +34,7 @@ load_dir("functions")
 
 # ********************
 # **** Read Data  **** 
-# ********************
-using CSV, DataFrames, Statistics, LinearAlgebra
+# ******************** 
 
 # import csv files 
 dataComm = CSV.read("./data/input/commuting_wide.csv", DataFrame; header = true)
@@ -88,7 +89,9 @@ println("<<<<<<<<<<<<<<< Data compilation completed >>>>>>>>>>>>>>>")
 # *******************************
 # **** Descriptive Analysis  **** 
 # *******************************
-using  Plots, GLM, GeoStats, GeoIO
-import CairoMakie as Mke
 
+descriptive_analysis(Lₙ, Areaₙ, Rₙ, distₙᵢ, comMat, Aᵢ)
 
+# *******************************
+# **** Descriptive Analysis  **** 
+# *******************************
