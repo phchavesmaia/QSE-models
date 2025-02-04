@@ -6,7 +6,7 @@ SW = Seidel and Wickerath
 # *********************
 # **** Load Files  **** 
 # *********************
-using  Plots, FixedEffectModels, GeoStats, GeoIO, CSV, DataFrames, Statistics, LinearAlgebra, GLM
+using  Plots, FixedEffectModels, GeoStats, GeoIO, CSV, DataFrames, Statistics, LinearAlgebra
 import CairoMakie as Mke
 
 function load_dir(dir::String)
@@ -92,6 +92,29 @@ println("<<<<<<<<<<<<<<< Data compilation completed >>>>>>>>>>>>>>>")
 
 descriptive_analysis(Lₙ, Areaₙ, Rₙ, distₙᵢ, comMat, Aᵢ)
 
-# *******************************
-# **** Descriptive Analysis  **** 
-# *******************************
+# **************************
+# **** Counterfactuals  **** 
+# **************************
+#= 
+    Since this counterfatual analysis is not explained in neither research papers,
+    it makes sense to have a brief discussion of what I am trying to implement. The
+    goal of this counterfactual exercise is to assess the GE effects of hypothetical
+    border that follows the border between formerly separated West Germany and East 
+    Germany.
+=#
+# ----------------- Border Data Prep --------------------
+
+# Create a dummy for counties in the East
+east = zeros(J,1)
+east[325:end] .= 1 # Set elements from 325 to the end to 1 
+
+# Create the condition matrix using outer logical OR between East-West and West-East
+conditionMatrix = ((east.==1) * (east.==0)') .+ ((east.==0) * (east.==1)')
+
+# Import border distance
+dataBoderDist = CSV.read("./data/input/CountyBorderDist.csv", DataFrame; header = true)
+BorderDist_n = dataBoderDist.BorderDist .+ 10 # Add a small distance to improve visibility in scatter plot
+BorderDist_n[east.==0] = -abs.(BorderDist_n[east.==0]) # value 0 in the center of germany from west (negative) to east (positive)
+
+# -------------- Counterfactual Estimation --------------
+

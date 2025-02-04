@@ -1,6 +1,8 @@
-# Monde, Redding and Rossi-Hansberg (2018)
+# Monte, Redding and Rossi-Hansberg (2018)
 
-This folder aims to replicate the Seidel and Wickerath (2020) implementation of the Monde, Redding and Rossi-Hansberg (2018) model in Julia. My efforts are heavily based on Ahfeldt and Seidel (2024) replication toolkit, of which I uploaded the corresponding codebook explaining the algorithims in this repository.
+This repository aims to replicate the Seidel and Wickerath (2020) implementation of the Monte, Redding and Rossi-Hansberg (2018) model in Julia. My efforts are **heavily** based on the Ahfeldt and Seidel (2024) replication toolkit, of which I uploaded the corresponding codebook explaining the algorithims (functions) in this repository. 
+
+Importantly, as repeatedly stated by Ahfeldt and Seidel (2024) in their original implemenation, the descriptive analyses and counterfactuals exercises "serve didactic purposes and are unrelated to both research papers". Thus, this Julia implementation only aims to replicate the aforemetioned toolkit and do not aim to replicate neither research paper results.
 
 ## References
 
