@@ -7,10 +7,5 @@ authors:
 title: "Quantitative Spatial Economics in Julia"
 date-released: 2025-02-04
 url: "https://github.com/phchavesmaia/QSE-models"
-preferred-citation:
-  type: manual
-  authors:
-  - family-names: "Chaves Maia"
-    given-names: "Pedro Henrique"
-    orcid: "https://orcid.org/0009-0003-4869-3352"
+
 
