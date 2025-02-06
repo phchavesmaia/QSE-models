@@ -51,10 +51,11 @@ function counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ; Âᵢ=ones(size(
 
         # calculate loop variables ŵₙ1 and λ̂ₙᵢ1
         ŵₙ1 = (1 ./ (wₙ.*Lₙ.*L̂ₙ)) .* (sum(πₙᵢ .* π̂ₙᵢ .* v̄ₙ .* v̄̂ₙ .* Rₙ .* R̂ₙ, dims=1)')
-        ŵₙ1 = ŵₙ1 ./ mean(ŵₙ1.*wₙ) # wages are identified up until normalization (at w', not ŵ)
+        ŵₙ1 = ŵₙ1 ./ mean(ŵₙ1.*wₙ) # wages are identified up to normalization (at w', not ŵ)
         
         λ̂ₙᵢ1 = num_λ̂ₙᵢ1(B̂ₙᵢ,P̂ₙ,P̂ₕₙ,ŵₙ0,κ̂ₙᵢ) ./ sum(λₙᵢ .*  num_λ̂ₙᵢ1(B̂ₙᵢ,P̂ₙ,P̂ₕₙ,ŵₙ0,κ̂ₙᵢ))
 
+        # assess for convergence
         err_ŵₙ = round(maximum(abs.(ŵₙ1-ŵₙ0)),digits=tol_digits)
         err_λ̂ₙᵢ = round(maximum(abs.(λ̂ₙᵢ1-λ̂ₙᵢ0)),digits=tol_digits)
 
