@@ -83,25 +83,25 @@ baseline = baseline'
 # **** Productivity and Trade Shares from Model Inversion  **** 
 # *************************************************************
 
-@time Aᵢ, πₙᵢ, Pₙ  = solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ)
+@time Aᵢ, πₙᵢ, Pₙ  = solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ);
 println("<<<<<<<<<<<<<<< Data compilation completed >>>>>>>>>>>>>>>")
 
 # *******************************
 # **** Descriptive Analysis  **** 
 # *******************************
 
-descriptive_analysis(Lₙ, Areaₙ, Rₙ, distₙᵢ, comMat, Aᵢ, baseline, λₙᵢ)
+#descriptive_analysis(Lₙ, Areaₙ, Rₙ, distₙᵢ, comMat, Aᵢ, baseline, λₙᵢ);
 
 # **************************
 # **** Counterfactuals  **** 
 # **************************
-#= 
+"
     Since this counterfatual analysis is not explained in neither research papers,
     it makes sense to have a brief discussion of what I am trying to implement. The
     goal of this counterfactual exercise is to assess the GE effects of hypothetical
     border that follows the border between formerly separated West Germany and East 
     Germany.
-=#
+"
 # ----------------- Border Data Prep --------------------
 
 # Create a dummy for counties in the East
@@ -116,11 +116,49 @@ dataBoderDist = CSV.read("./data/input/CountyBorderDist.csv", DataFrame; header 
 BorderDist_n = dataBoderDist.BorderDist .+ 10 # Add a small distance to improve visibility in scatter plot
 BorderDist_n[east.==0] = -abs.(BorderDist_n[east.==0]) # value 0 in the center of germany from west (negative) to east (positive)
 
-# -------------- Counterfactual Estimation --------------
-
-# Creating a *trade* border between East and West Germany
+# -------------- Creating a *trade* border between East and West Germany --------------
+Âᵢ=ones(size(wₙ)); B̂ₙᵢ=ones(size(πₙᵢ)); κ̂ₙᵢ=ones(size(πₙᵢ))
+# creating the tax  
 d̂ₙᵢ = ones(size(dₙᵢ))
 d̂ₙᵢ[conditionMatrix.==1] .= 1000 # Set border cost in trade to large value
 
 # estimating counterfactual variables 
-@time ŵₙ, v̄̂ₙ, P̂ₕₙ, π̂ₙᵢ, λ̂ₙᵢ, P̂ₙ, R̂ₙ, L̂ₙ, Ū̂ = counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ, d̂ₙᵢ=d̂ₙᵢ)
+@time ŵₙ, v̄̂ₙ, P̂ₕₙ, π̂ₙᵢ, λ̂ₙᵢ, P̂ₙ, R̂ₙ, L̂ₙ, Ū̂ = counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ, d̂ₙᵢ=d̂ₙᵢ);
+
+# Map findings
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_TRADE_Qchange.png") 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_TRADE_Pchange.png") 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_TRADE_Rchange.png") 
+
+"
+Essentially, the two sides of Germany simply stopped trading with 
+each other, hence prices go downs due to the loss of potential market,
+i.e., loss of (feasible) demand for the tradable good. This implies
+less firms, leading to less jobs (lower R̂ₙ in equilibrium) and lower 
+wages, which shift the non-tradable good (housing) prices down.
+"
+
+# -------------- Creating a *commuting* border between East and West Germany --------------
+
+# destroying every commuting road between east and west germany 
+κ̂ₙᵢ = ones(size(dₙᵢ))
+κ̂ₙᵢ[conditionMatrix.==1] .= 1000
+
+# estimating counterfactual variables 
+@time ŵₙ, v̄̂ₙ, P̂ₕₙ, π̂ₙᵢ, λ̂ₙᵢ, P̂ₙ, R̂ₙ, L̂ₙ, Ū̂ = counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ, κ̂ₙᵢ=κ̂ₙᵢ);
+
+# Map findings
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMM_Qchange.png") 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMM_Pchange.png") 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_COMM_Rchange.png") 
+
+# -------------- Creating a *commuting* and *trade* border border between East and West Germany --------------
+
+# estimating counterfactual variables 
+@time ŵₙ, v̄̂ₙ, P̂ₕₙ, π̂ₙᵢ, λ̂ₙᵢ, P̂ₙ, R̂ₙ, L̂ₙ, Ū̂ = counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ, d̂ₙᵢ=d̂ₙᵢ, κ̂ₙᵢ=κ̂ₙᵢ);
+
+# Map findings
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Qchange.png") 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Pchange.png") 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Rchange.png") 
+ 

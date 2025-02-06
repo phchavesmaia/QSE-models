@@ -43,7 +43,8 @@ function solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ)
     end
 
     # get prices
-    Pₙ = (σ/(σ-1)) .* (((Lₙ.^(1-(1-σ)*ν))./(σ.*f.*diag(πₙᵢ))) ) .^ (1/(1-σ)) .* (wₙ .* diag(dₙᵢ) ./ Aᵢ0)
+    #Pₙ = (σ/(σ-1)) .* (((Lₙ.^(1-(1-σ)*ν))./(σ.*f.*diag(πₙᵢ))) ) .^ (1/(1-σ)) .* (wₙ .* diag(dₙᵢ) ./ Aᵢ0) (what I believe to be right)
+    Pₙ = (σ/(σ-1)) .* (Lₙ./(σ.*f.*diag(πₙᵢ))) .^ (1/(1-σ)) .* (wₙ ./ Aᵢ0) # ahfeldt version
 
     return Aᵢ0, πₙᵢ, Pₙ
 
