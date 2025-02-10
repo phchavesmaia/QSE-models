@@ -90,7 +90,7 @@ println("<<<<<<<<<<<<<<< Data compilation completed >>>>>>>>>>>>>>>")
 # **** Descriptive Analysis  **** 
 # *******************************
 
-#descriptive_analysis(Lₙ, Areaₙ, Rₙ, distₙᵢ, comMat, Aᵢ, baseline, λₙᵢ);
+descriptive_analysis(Lₙ, Areaₙ, Rₙ, distₙᵢ, comMat, Aᵢ, baseline, λₙᵢ);
 
 # **************************
 # **** Counterfactuals  **** 
