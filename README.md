@@ -4,6 +4,6 @@ These are my attempts at running QSE models in Julia. This repository is mostly 
 
 It follows the "roadmap" of this repository:
 - [X] [Redding and Rossi-Hansberg (2017)](https://github.com/phchavesmaia/QSE-models/tree/main/models/redding_rossihansberg-2017)
-- [ ] [Monte, Redding and Rossi-Hansberg (2018)](https://github.com/phchavesmaia/QSE-models/tree/main/models/monte_etal-2018)
+- [X] [Monte, Redding and Rossi-Hansberg (2018)](https://github.com/phchavesmaia/QSE-models/tree/main/models/monte_etal-2018)
 - [ ] Tsivanidis (2025)
 - [ ] Hörcher and Graham (2024)

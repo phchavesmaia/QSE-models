@@ -37,47 +37,47 @@ load_dir("functions")
 # ******************** 
 
 # import csv files 
-dataComm = CSV.read("./data/input/commuting_wide.csv", DataFrame; header = true)
-dataHous = CSV.read("./data/input/house_prices.csv", DataFrame; header = true)
-dataDistance = CSV.read("./data/input/distance_matrix.csv", DataFrame; header = true)
-dataArea = CSV.read("./data/input/CountyArea.csv", DataFrame; header = true)
-labor_file = CSV.read("./data/input/labor_tidy.csv", DataFrame; header = true)
-no_traffic = CSV.read("./data/input/roundtrip_time_base.csv", DataFrame; header = true)
+dataComm = CSV.read("./data/input/commuting_wide.csv", DataFrame; header = true);
+dataHous = CSV.read("./data/input/house_prices.csv", DataFrame; header = true);
+dataDistance = CSV.read("./data/input/distance_matrix.csv", DataFrame; header = true);
+dataArea = CSV.read("./data/input/CountyArea.csv", DataFrame; header = true);
+labor_file = CSV.read("./data/input/labor_tidy.csv", DataFrame; header = true);
+no_traffic = CSV.read("./data/input/roundtrip_time_base.csv", DataFrame; header = true);
 
 # commuting matrices
-comMat = Matrix(dataComm[:,2:end])
-comMat = comMat'
-diffe = sum(comMat, dims=2) .- sum(comMat, dims=1)'
-L = sum(comMat)
-λₙᵢ = comMat ./ L
-λₙᵢi = λₙᵢ ./ sum(λₙᵢ, dims = 2)
+comMat = Matrix(dataComm[:,2:end]);
+comMat = comMat';
+diffe = sum(comMat, dims=2) .- sum(comMat, dims=1)';
+L = sum(comMat);
+λₙᵢ = comMat ./ L;
+λₙᵢi = λₙᵢ ./ sum(λₙᵢ, dims = 2);
 
 # wage data
-wₙ = labor_file.median_income_workplace
-wₙ = wₙ ./ mean(wₙ) # normalization
-v̄ₙ = λₙᵢi * wₙ # expected residential income (eq. 14 in MRRH or eq. 6 in SW) -- this is in the 'model inversion' section
+wₙ = labor_file.median_income_workplace;
+wₙ = wₙ ./ mean(wₙ); # normalization
+v̄ₙ = λₙᵢi * wₙ ;# expected residential income (eq. 14 in MRRH or eq. 6 in SW) -- this is in the 'model inversion' section
 
 # demographics data
-Lₙ = sum(λₙᵢ, dims=1)' .* L # people who work at n -- this is in the 'model inversion' section
-Lₙ = Lₙ ./ mean(Lₙ) # normalization
-Rₙ = sum(λₙᵢ, dims=2) .* L # people who live in n -- this is in the 'model inversion' section
-Rₙ = Rₙ ./ mean(Rₙ) # normalization
+Lₙ = sum(λₙᵢ, dims=1)' .* L; # people who work at n -- this is in the 'model inversion' section
+Lₙ = Lₙ ./ mean(Lₙ); # normalization
+Rₙ = sum(λₙᵢ, dims=2) .* L ;# people who live in n -- this is in the 'model inversion' section
+Rₙ = Rₙ ./ mean(Rₙ); # normalization
 
 # housing prices data
-Pₕₙ = dataHous.rentindex
-lPₕₙ = log.(Pₕₙ)
+Pₕₙ = dataHous.rentindex;
+lPₕₙ = log.(Pₕₙ);
 
 # distance data and computing trade costs from distances
-distₙᵢ =  Matrix(dataDistance[:,2:end])
-distₙᵢ = distₙᵢ ./ minimum(distₙᵢ)
-dₙᵢ = distₙᵢ .^ ψ # nonumbered equation in both papers, but its on the "model inversion" section (fund. produc.)
+distₙᵢ =  Matrix(dataDistance[:,2:end]);
+distₙᵢ = distₙᵢ ./ minimum(distₙᵢ);
+dₙᵢ = distₙᵢ .^ ψ ;# nonumbered equation in both papers, but its on the "model inversion" section (fund. produc.)
 
 # geographic area
-Areaₙ = dataArea.Area
+Areaₙ = dataArea.Area;
 
 # congestion (traffic) data
-baseline = Matrix(no_traffic[:,2:end])
-baseline = baseline'
+baseline = Matrix(no_traffic[:,2:end]);
+baseline = baseline';
 
 # *************************************************************
 # **** Productivity and Trade Shares from Model Inversion  **** 
@@ -105,30 +105,30 @@ println("<<<<<<<<<<<<<<< Data compilation completed >>>>>>>>>>>>>>>")
 # ----------------- Border Data Prep --------------------
 
 # Create a dummy for counties in the East
-east = zeros(J,1)
-east[325:end] .= 1 # Set elements from 325 to the end to 1 
+east = zeros(J,1);
+east[325:end] .= 1 ;# Set elements from 325 to the end to 1 
 
 # Create the condition matrix using outer logical OR between East-West and West-East
-conditionMatrix = ((east.==1) * (east.==0)') .+ ((east.==0) * (east.==1)')
+conditionMatrix = ((east.==1) * (east.==0)') .+ ((east.==0) * (east.==1)');
 
 # Import border distance
-dataBoderDist = CSV.read("./data/input/CountyBorderDist.csv", DataFrame; header = true)
-BorderDist_n = dataBoderDist.BorderDist .+ 10 # Add a small distance to improve visibility in scatter plot
-BorderDist_n[east.==0] = -abs.(BorderDist_n[east.==0]) # value 0 in the center of germany from west (negative) to east (positive)
+dataBoderDist = CSV.read("./data/input/CountyBorderDist.csv", DataFrame; header = true);
+BorderDist_n = dataBoderDist.BorderDist .+ 10; # Add a small distance to improve visibility in scatter plot
+BorderDist_n[east.==0] = -abs.(BorderDist_n[east.==0]) ;# value 0 at the germany division point from west (negative) to east (positive)
 
 # -------------- Creating a *trade* border between East and West Germany --------------
-Âᵢ=ones(size(wₙ)); B̂ₙᵢ=ones(size(πₙᵢ)); κ̂ₙᵢ=ones(size(πₙᵢ))
+Âᵢ=ones(size(wₙ)); B̂ₙᵢ=ones(size(πₙᵢ)); κ̂ₙᵢ=ones(size(πₙᵢ));
 # creating the tax  
-d̂ₙᵢ = ones(size(dₙᵢ))
-d̂ₙᵢ[conditionMatrix.==1] .= 1000 # Set border cost in trade to large value
+d̂ₙᵢ = ones(size(dₙᵢ));
+d̂ₙᵢ[conditionMatrix.==1] .= 1000 ;# Set border cost in trade to large value
 
 # estimating counterfactual variables 
 @time ŵₙ, v̄̂ₙ, P̂ₕₙ, π̂ₙᵢ, λ̂ₙᵢ, P̂ₙ, R̂ₙ, L̂ₙ, Ū̂ = counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ, d̂ₙᵢ=d̂ₙᵢ);
 
 # Map findings
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_TRADE_Qchange.png") 
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_TRADE_Pchange.png") 
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_TRADE_Rchange.png") 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_TRADE_Qchange.png") ;
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_TRADE_Pchange.png") ;
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_TRADE_Rchange.png") ;
 
 "
 Essentially, the two sides of Germany simply stopped trading with 
@@ -141,16 +141,16 @@ wages, which shift the non-tradable good (housing) prices down.
 # -------------- Creating a *commuting* border between East and West Germany --------------
 
 # destroying every commuting road between east and west germany 
-κ̂ₙᵢ = ones(size(dₙᵢ))
-κ̂ₙᵢ[conditionMatrix.==1] .= 1000
+κ̂ₙᵢ = ones(size(dₙᵢ));
+κ̂ₙᵢ[conditionMatrix.==1] .= 1000;
 
 # estimating counterfactual variables 
 @time ŵₙ, v̄̂ₙ, P̂ₕₙ, π̂ₙᵢ, λ̂ₙᵢ, P̂ₙ, R̂ₙ, L̂ₙ, Ū̂ = counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ, κ̂ₙᵢ=κ̂ₙᵢ);
 
 # Map findings
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMM_Qchange.png") 
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMM_Pchange.png") 
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_COMM_Rchange.png") 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMM_Qchange.png"); 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMM_Pchange.png") ;
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_COMM_Rchange.png") ;
 
 # -------------- Creating a *commuting* and *trade* border border between East and West Germany --------------
 
@@ -158,7 +158,66 @@ mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in
 @time ŵₙ, v̄̂ₙ, P̂ₕₙ, π̂ₙᵢ, λ̂ₙᵢ, P̂ₙ, R̂ₙ, L̂ₙ, Ū̂ = counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ, d̂ₙᵢ=d̂ₙᵢ, κ̂ₙᵢ=κ̂ₙᵢ);
 
 # Map findings
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Qchange.png") 
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Pchange.png") 
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Rchange.png") 
- 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Qchange.png") ;
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Pchange.png") ;
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Rchange.png") ;
+
+# Scatter plot of goods market impact 
+scatter(BorderDist_n, log.(P̂ₕₙ), 
+        xlabel="Border Distance (km)", 
+        ylabel="Log change in prices", 
+        label = "Housing", 
+        title="Effects of introducing a domestic border (prices)", 
+        grid=true, 
+        legend=:bottomleft)
+scatter!(BorderDist_n, log.(P̂ₙ), label = "Tradable goods", grid=true)
+savefig("./figures/scatter_COUNT_BORDER_COMMTRADE_PriceChanges.png");
+
+# Scatter plot of labour market impact 
+scatter(BorderDist_n, log.(ŵₙ), 
+        xlabel="Border Distance (km)", 
+        ylabel="Log change", 
+        label = "Wages", 
+        title="Effects of introducing a domestic border (labour)", 
+        grid=true, 
+        legend=:bottomleft)
+scatter!(BorderDist_n, log.(L̂ₙ), label = "Employment", grid=true)
+savefig("./figures/scatter_COUNT_BORDER_COMMTRADE_PriceChanges.png");
+
+
+# -------------- Now repeat with half the trade cost --------------
+ψ = 0.21; dₙᵢ = distₙᵢ .^ ψ; # lowering trade costs
+
+# Productivity and trade shares from model inversion
+@time Aᵢ, πₙᵢ, Pₙ  = solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ);
+
+# estimating counterfactual variables 
+@time ŵₙ, v̄̂ₙ, P̂ₕₙ, π̂ₙᵢ, λ̂ₙᵢ, P̂ₙ, R̂ₙ, L̂ₙ, Ū̂ = counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ, d̂ₙᵢ=d̂ₙᵢ, κ̂ₙᵢ=κ̂ₙᵢ);
+
+# Map findings
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Qchange_lowTradeCost.png"); 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Pchange_lowTradeCost.png");
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Rchange_lowTradeCost.png");
+
+# Scatter plot of goods market impact 
+scatter(BorderDist_n, log.(P̂ₕₙ), 
+        xlabel="Border Distance (km)", 
+        ylabel="Log change in prices", 
+        label = "Housing", 
+        title="Effects of introducing a domestic border (prices)", 
+        grid=true, 
+        legend=:bottomleft)
+scatter!(BorderDist_n, log.(P̂ₙ), label = "Tradable goods", grid=true)
+savefig("./figures/scatter_COUNT_BORDER_COMMTRADE_PriceChanges_lowTradeCost.png");
+
+# Scatter plot of labour market impact 
+scatter(BorderDist_n, log.(ŵₙ), 
+        xlabel="Border Distance (km)", 
+        ylabel="Log change", 
+        label = "Wages", 
+        title="Effects of introducing a domestic border (labour)", 
+        grid=true, 
+        legend=:bottomleft)
+scatter!(BorderDist_n, log.(L̂ₙ), label = "Employment", grid=true)
+savefig("./figures/scatter_COUNT_BORDER_COMMTRADE_LabourChanges_lowTradeCost.png");
+
