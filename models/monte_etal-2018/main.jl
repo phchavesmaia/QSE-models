@@ -6,7 +6,7 @@ SW = Seidel and Wickerath
 # *********************
 # **** Load Files  **** 
 # *********************
-using  Plots, FixedEffectModels, GeoStats, GeoIO, CSV, DataFrames, Statistics, LinearAlgebra
+using  Plots, LaTeXStrings, FixedEffectModels, GeoStats, GeoIO, CSV, DataFrames, Statistics, LinearAlgebra
 import CairoMakie as Mke
 
 function load_dir(dir::String)
@@ -84,6 +84,19 @@ baseline = baseline';
 # Under the assumption that workplace amenities Tᵢ = 1, we have that model-consistent wages can then be recovered as w̃ᵢ = T̂ᵢ .^ (1/ε), where T̂ᵢ is the function estimate
 
 @time Tᵢ, λₙᵢn_model, λₙᵢ_model, Lₙᵢ = get_bi_lamba(wₙ, baseline, Rₙ, Lₙ , L);  
+df = DataFrame()
+df[!,"real"] = vec(reshape(λₙᵢ,:,1))
+df[!,"model"] = vec(reshape(λₙᵢ_model,:,1))
+model = reg(df, @formula(real ~ model))
+scatter(reshape(λₙᵢ,:,1), reshape(λₙᵢ_model,:,1), 
+        legend = false, xlabel = "Real λₙᵢ", ylabel="Model consistent λₙᵢ",
+        title="Model-consistent λₙᵢ fit", smooth=:true)
+annotate!(
+    0.01,
+    0.035,
+    latexstring("R^2 = $(round(r2(model), digits = 2))")
+    )
+savefig("./figures/model_consistent_lambda_fit.png");
 
 # *************************************************************
 # **** Productivity, Amenities and Trade Shares from Model Inversion  **** 
