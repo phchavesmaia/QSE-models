@@ -44,23 +44,23 @@ dataArea = CSV.read("./data/input/CountyArea.csv", DataFrame; header = true);
 labor_file = CSV.read("./data/input/labor_tidy.csv", DataFrame; header = true);
 no_traffic = CSV.read("./data/input/roundtrip_time_base.csv", DataFrame; header = true);
 
-# commuting matrices
+# commuting matrices (Assumes you actually have the commuting flows matrix)
 comMat = Matrix(dataComm[:,2:end]);
 comMat = comMat';
 diffe = sum(comMat, dims=2) .- sum(comMat, dims=1)';
 L = sum(comMat);
 λₙᵢ = comMat ./ L;
-λₙᵢi = λₙᵢ ./ sum(λₙᵢ, dims = 2);
+λₙᵢn = λₙᵢ ./ sum(λₙᵢ, dims = 2);
 
 # wage data
 wₙ = labor_file.median_income_workplace;
 wₙ = wₙ ./ mean(wₙ); # normalization
-v̄ₙ = λₙᵢi * wₙ ;# expected residential income (eq. 14 in MRRH or eq. 6 in SW) -- this is in the 'model inversion' section
+v̄ₙ = λₙᵢn * wₙ ;# expected residential income (eq. 14 in MRRH or eq. 6 in SW) -- this is in the 'model inversion' section
 
 # demographics data
 Lₙ = sum(λₙᵢ, dims=1)' .* L; # people who work at n -- this is in the 'model inversion' section
 Lₙ = Lₙ ./ mean(Lₙ); # normalization
-Rₙ = sum(λₙᵢ, dims=2) .* L ;# people who live in n -- this is in the 'model inversion' section
+Rₙ = sum(λₙᵢ, dims=2) .* L ; # people who live in n -- this is in the 'model inversion' section
 Rₙ = Rₙ ./ mean(Rₙ); # normalization
 
 # housing prices data
@@ -79,8 +79,14 @@ Areaₙ = dataArea.Area;
 baseline = Matrix(no_traffic[:,2:end]);
 baseline = baseline';
 
+# creating getting λₙᵢn and λₙᵢ if you don't have it in your data. 
+# Moreover, if you do not have wₙ, let wₙ=1 and interpret transformed wages ωₙ = Tᵢ (eq. 26 of ARSW)
+# Under the assumption that workplace amenities Tᵢ = 1, we have that model-consistent wages can then be recovered as w̃ᵢ = T̂ᵢ .^ (1/ε), where T̂ᵢ is the function estimate
+
+@time Tᵢ, λₙᵢn_model, λₙᵢ_model, Lₙᵢ = get_bi_lamba(wₙ, baseline, Rₙ, Lₙ , L);  
+
 # *************************************************************
-# **** Productivity and Trade Shares from Model Inversion  **** 
+# **** Productivity, Amenities and Trade Shares from Model Inversion  **** 
 # *************************************************************
 
 @time Aᵢ, πₙᵢ, Pₙ  = solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ);
@@ -182,7 +188,7 @@ scatter(BorderDist_n, log.(ŵₙ),
         grid=true, 
         legend=:bottomleft)
 scatter!(BorderDist_n, log.(L̂ₙ), label = "Employment", grid=true)
-savefig("./figures/scatter_COUNT_BORDER_COMMTRADE_PriceChanges.png");
+savefig("./figures/scatter_COUNT_BORDER_COMMTRADE_LabourChanges.png");
 
 
 # -------------- Now repeat with half the trade cost --------------

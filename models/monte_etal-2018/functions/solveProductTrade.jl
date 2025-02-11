@@ -1,4 +1,4 @@
-function solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ)
+function solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ; tol_digits=4)
 
     "
     This function recovers fundamental productivities that satisfy the  
@@ -11,7 +11,7 @@ function solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ)
     # defining numerator of eq (10):   
     num(Lₙ,wₙ,dₙᵢ,Aᵢ) = (Lₙ'.^(1-(1-σ)*ν)) .* ((wₙ' .* dₙᵢ ./ Aᵢ') .^ (1-σ)) # observe that labor, wages and productivity change across columns!
     # defining main loop
-    err=10000; tol = 1e-6; x = 1; 
+    err=10000; tol = 10.0^(-tol_digits) ; x = 1; 
     while (err>=tol) & (x<=200000)
 
         # define trade shares
@@ -21,7 +21,7 @@ function solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ)
         income = wₙ .* Lₙ; expenditure = sum(πₙᵢ .* v̄ₙ .* Rₙ, dims=1)';
         
         # equation (12) -- equilibrium condition
-        err = round.(maximum(abs.(income - expenditure)),digits=6);
+        err = round.(maximum(abs.(income - expenditure)),digits=tol_digits);
 
         # Update Aᵢ guess
         Aᵢ1 = Aᵢ0 .* (income ./ expenditure) # if income>expenditure => workers need to be more productive to afford their purchases => higher Aᵢ 

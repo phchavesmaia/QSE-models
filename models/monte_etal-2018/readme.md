@@ -21,6 +21,7 @@ Thus, the main differences between my code and Ahfeldt and Seidel (2024) version
   Which is equation 8 of Monte, Redding, and Rossi-Hansberg (2018) under the usual assumption that $`d_{nn}=1 \forall n\in\mathcal{N}`$.
 
 3. While updating the value of $`\hat{P}_n`$, I allow for the (highly unlikely) possibility that $`\hat{d}_{nn}\neq 1`$, differently from the original authors, as stated in their Codebook. 
+
 ## References
 
 G. M. Ahlfeldt, Seidel, T. (2024). Toolkit for quantitative spatial models. https://github.com/Ahlfeldt/MRRH2018-toolkit.
