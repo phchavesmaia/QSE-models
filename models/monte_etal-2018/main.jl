@@ -1,6 +1,7 @@
 "
 MRRH = Monte, Redding, and Rossi-Hansberg
 SW = Seidel and Wickerath
+ARSW = Afhdelt et. al
 "
 
 # *********************

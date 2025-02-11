@@ -8,7 +8,7 @@ function solveHLwCtyOpen_E(fund, d, τⁱ, τᵒ, noplaces)
     Iwest = fund.Country.==1
     Ieast = fund.Country.==0
     # convergence indicators
-    converge = πₙᵢ = dom_πₙᵢ = 0
+    converge = πₙᵢ = 0
     # Initialization based on a symmetric allocation;
     Lᵢ = ones(noplaces) .* (LL/noplaces)
     wᵢ = ones(noplaces)

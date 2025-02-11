@@ -11,7 +11,7 @@ I am currently in the process of:
 - [x] Finish the "upside down" model
 - [x] "Rotate" the model so that it makes perfect sense in Julia logic
 - [x] Programme the counterfactuals
-- [ ] Stress test the model to asses whether some normalizations (that I did not understand the reason behind) are actually necessary.
+- [x] Stress test the model to asses whether some normalizations (that I did not understand the reason behind) are actually necessary.
 
 ## References
 
