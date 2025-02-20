@@ -5,13 +5,7 @@ This is my attempt to replicate Redding and Rossi-Hansberg (2017) implementation
 1. Create the distance matrix using a graph (network) structure instead of the matricial distances
 2. Rewrote a couple of functions that didn't made a lot of sense to me, though they still lead to identical results
 
-I found that, apparently, Matlab reshapes matrices in a different way from Julia. Thus, straight up translating the code would imply running the model between a country at the North and the other at the South of the map, differently from the West-East division of the original paper. In this implementation of the code, this incongruity between languages is fixed, i.e., the code replicates the results of the paper, although the matrices are slighly different due to the countries definition.
-
-I am currently in the process of:
-- [x] Finish the "upside down" model
-- [x] "Rotate" the model so that it makes perfect sense in Julia logic
-- [x] Programme the counterfactuals
-- [x] Stress test the model to asses whether some normalizations (that I did not understand the reason behind) are actually necessary.
+I found that, apparently, Matlab reshapes matrices in a different way from Julia. Thus, straight up translating the code would imply running the model for a North-South country split, differently from the West-East division of the original paper. In this implementation of the code, this incongruity between languages is fixed, i.e., the code replicates the results of the paper, although the matrices become slighly different.
 
 ## References
 
