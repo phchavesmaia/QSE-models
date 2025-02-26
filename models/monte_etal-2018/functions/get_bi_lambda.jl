@@ -4,7 +4,7 @@ function get_bi_lamba(wₙ,τₙᵢ,Lᵢ,Rₙ,L̄; tol_digits=4)
     "
 
     J = size(wₙ,1); Tᵢ0 = ones(J,1) # initial guess
-    err_b = err_t = 10000; x = 1; tol = 10.0^(-tol_digits); κₙᵢ = τₙᵢ.^ μ # loop variables
+    err_t = 10000; x = 1; tol = 10.0^(-tol_digits); κₙᵢ = τₙᵢ.^ μ # loop variables
     local λₙᵢn # initiating variables that I want to keep outside the loop
 
     while (err_t>=tol) & (x<=200000)

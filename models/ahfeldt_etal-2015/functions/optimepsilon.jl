@@ -1,50 +1,63 @@
-function get_ω_and_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ; tol_digits = 6, ε0=4, maxiter=1000)
+function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500)
+
+    # initiate main loop and output variables
+    ωⱼ  = zeros(size(Hₘⱼ,1),1); Ĥₘⱼ = zeros(size(Hₘⱼ,1),1);
+    pos_employment = vec(Hₘⱼ.>0); pos_residence = vec(Hᵣᵢ.>0) ; # identifying places with firms and residents
+    x=1; err = 10000; tol = 10.0^(-tol_digits); # defining loop variables
+
+    # now, I ONLY care for places that are being used 
+    τᵢⱼ = τᵢⱼ[findall(pos_employment),findall(pos_residence)]' ; 
+    Hᵣᵢ = Hᵣᵢ[pos_residence]; 
+    Hₘⱼ = Hₘⱼ[pos_employment];
+
+    # initial guess on ω 
+    ωⱼ0 = ωⱼ[pos_employment]; 
+    ωⱼ0=(((1-α)./Qⱼ[pos_employment]).^((1-α)/α)).*α; # Equation (12) which combines first-order condition and zero-profit conditions.
+
+    # initiate Ĥₘⱼ
+    local Ĥₘⱼ0 ;
+
+    # announcing the function
+    println(">>>> Calibrating ω <<<<")
+    while (err >= tol) & (x <= x_max)
+        # Compute conditional commuting probabilities (equation 4)
+        πᵢⱼi = (ωⱼ0' ./ exp.(ν .* τᵢⱼ)) ./ sum(ωⱼ0' ./ exp.(ν .* τᵢⱼ), dims=2) ;
+        # Compute predicted workplace employment (equation 7 or, more explicitly, equation 26 and S.44)
+        Ĥₘⱼ0 = sum(πᵢⱼi .* Hᵣᵢ, dims=1)' ;
+        # Compute Employment Gap and Check Convergence
+        err = round(maximum(abs.(Ĥₘⱼ0 - Hₘⱼ)),digits = tol_digits) ;
+        # Update ω guess
+        ωⱼ1 = ωⱼ0 .* (Hₘⱼ ./ Ĥₘⱼ0) ;
+        # Apply damping to improve stability
+        ωⱼ0 = 0.75 .* ωⱼ0 + 0.25 .* ωⱼ1 ;
+        # Normalize wages to ensure geomean(ωⱼ) = 1
+        ωⱼ0 = ωⱼ0 ./ geomean(ωⱼ0) ;
+        # Print convergence rate
+        println([x, trunc(err / tol, digits=0)])
+        x += 1;
+    end
+    if x==x_max
+        error("Convergence not achieved for adjusted wages (ω)")
+    end
+    
+    ωⱼ[pos_employment] = ωⱼ0
+    Ĥₘⱼ[pos_employment] = Ĥₘⱼ0
+    println(">>>> Wage System Converged <<<<")
+
+    return ωⱼ, Ĥₘⱼ
+end
+
+function get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits = 6, ε0=4, maxiter=1000)
     
     # *****************************************
     # ******* Computing ajusted wages ω *******
     # *****************************************
 
-    function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ ; tol_digits=tol_digits, x_max = 500)
-        ωⱼ = zeros(size(Hₘⱼ,1),1); x=1; 
-        pos_employment = vec(Hₘⱼ.>0); pos_residence = vec(Hᵣᵢ.>0) # identifying places with firms and residents
-        err = 10000; tol = 10.0^(-tol_digits); # defining loop variables
-
-        # ** now, I ONLY care for places that are being used ** 
-        τᵢⱼ = τᵢⱼ[findall(pos_employment),findall(pos_residence)]' ; Hᵣᵢ = Hᵣᵢ[pos_residence]; Hₘⱼ = Hₘⱼ[pos_employment];
-        # ** initial guess on ω 
-        ωⱼ0 = ωⱼ[pos_employment]; # Again, on wages, I only care for places with firms i.e. that pay wages (workplace employment)
-        ωⱼ0=(((1-α)./Qⱼ[pos_employment]).^((1-α)/α)).*α; # Equation (12) which combines first-order condition and zero-profit conditions.
-
-        # announcing the function
-        println(">>>> Calibrating ω <<<<")
-        while (err>=tol) & (x<=x_max) 
-            # predicting workplace employment (eq. 26 or appendix S.44)
-            Ĥₘⱼ = sum((ωⱼ0' ./ exp.(ν.*τᵢⱼ).* Hᵣᵢ)./sum(ωⱼ0' ./ exp.(ν.*τᵢⱼ), dims=2), dims=1)';
-            # calculate error
-            err = round(maximum(abs.(Ĥₘⱼ-Hₘⱼ)),digits = tol_digits)
-            # update ω guess
-            ωⱼ1 = ωⱼ0 .* (Hₘⱼ./Ĥₘⱼ)
-            # damping 
-            ωⱼ0 = 0.75 .* ωⱼ0 + 0.25 .* ωⱼ1 
-            # normalizing wages to geomean(ωⱼ) = 1
-            ωⱼ0 = ωⱼ0./geomean(ωⱼ0)
-            # print convergence
-            #println([x, round(err/tol, digits=0)])
-            x+=1;
-        end
-        if x==x_max
-            error("Convergence not achieved for adjusted wages (ω)")
-        end
-        ωⱼ[pos_employment] = ωⱼ0
-        println(">>>> Wage System Converged <<<<")
-        return ωⱼ
-    end
+    ωⱼ, Ĥₘⱼ = get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ, tol_digits=tol_digits);
 
     # **********************************************************
     # ******* Computing value of objective function f(ε) *******
-    # **********************************************************
-
-    ωⱼ = get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ);
+    # **********************************************************    
 
     function get_fϵ(ε)
         # *******************
@@ -106,6 +119,6 @@ function get_ω_and_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ; tol_digits = 6, ε0=4, m
     # function evaluation : $num_evals
     """
     )
-    return ωⱼ, minx[1]
+    return minx[1], Ĥₘⱼ
     
 end
