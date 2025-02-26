@@ -92,4 +92,4 @@ S = Int64(dset["nobs06"]); Qⱼ = dset["floor06"]; Hₘⱼ = dset["empwpl06"] ; 
 block_bzk06 = dset["bzk06"];
 
 # computing exogenous parameters + endogenous variables
-Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_exog(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
+Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 

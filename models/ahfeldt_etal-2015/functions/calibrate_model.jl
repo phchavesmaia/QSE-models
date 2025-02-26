@@ -1,4 +1,4 @@
-function cal_exog(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
+function cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
 
     # Identifying places with firms and residents
     pos_employment = vec(Hₘⱼ.>0); pos_residence = vec(Hᵣᵢ.>0) 
