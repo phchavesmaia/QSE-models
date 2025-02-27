@@ -68,7 +68,7 @@ df[!,"model"] = vec(Ĥₘⱼ)
 df[!,"data"] = vec(Hₘⱼ)
 reg(df,@formula(data ~ model))
 model = reg(df,@formula(data ~ model));
-slope = round(coef(model)[2],digits=tol_digits);
+slope = round(coef(model)[2],digits=6);
 println("The slope of the model-real workplace population data is: $slope")
 
 # ********************************************************************************
@@ -102,6 +102,12 @@ df = DataFrame()
 df[!,"model"] = vec(H̃ₘⱼ)
 df[!,"data"] = vec(Hₘⱼ)
 model = reg(df,@formula(data ~ model));
-slope = round(coef(model)[2],digits=tol_digits);
+slope = round(coef(model)[2],digits=6);
 println("The slope of the model-real workplace population data is: $slope") # it should be 1!
+
+# plotting some maps
+mapit("./data/shapefile/Berlin4matlab1.shp",CMA,"Commuter market access", label_legend="", path_to="./figures/cma06.png")
+mapit("./data/shapefile/Berlin4matlab1.shp",Ãⱼ,"Productivity", label_legend="", path_to="./figures/productivity06.png") # this is clearly wrong!!!
+mapit("./data/shapefile/Berlin4matlab1.shp",B̃ᵢ,"Amenities", label_legend="", path_to="./figures/amenities06.png")
+mapit("./data/shapefile/Berlin4matlab1.shp",ϕᵢ,"", label_legend="")
 
