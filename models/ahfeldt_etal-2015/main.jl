@@ -33,7 +33,7 @@ Random.seed!(s)
 ν=κε=0.07; # Set commuting decay to reduced-form estimate (see ARSW table 3)
 
 # *****************************************************
-# *** computing ω and the frechet-shape parameter ε ***
+# *** Computing ω and the frechet-shape parameter ε ***
 # *****************************************************
 
 # read 1986 data
@@ -67,6 +67,9 @@ df = DataFrame()
 df[!,"model"] = vec(Ĥₘⱼ)
 df[!,"data"] = vec(Hₘⱼ)
 reg(df,@formula(data ~ model))
+model = reg(df,@formula(data ~ model));
+slope = round(coef(model)[2],digits=tol_digits);
+println("The slope of the model-real workplace population data is: $slope")
 
 # ********************************************************************************
 # *** Calibration of exogenous fundamentals (solving the equilibrium for 2006) ***
@@ -93,3 +96,12 @@ block_bzk06 = dset["bzk06"];
 
 # computing structural fundamentals of the model
 Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
+
+# indirectly 'validating' bilateral commuting probabilities calibration
+df = DataFrame()
+df[!,"model"] = vec(H̃ₘⱼ)
+df[!,"data"] = vec(Hₘⱼ)
+model = reg(df,@formula(data ~ model));
+slope = round(coef(model)[2],digits=tol_digits);
+println("The slope of the model-real workplace population data is: $slope") # it should be 1!
+
