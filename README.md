@@ -10,3 +10,5 @@ It follows the roadmap of this repository:
 - [ ] [Ahfeldt et al. (2015)](https://github.com/phchavesmaia/QSE-models/tree/main/models/ahfeldt_etal-2015)
 - [ ] Hörcher and Graham (2024)
 
+# Dependencies
+If you are in a Windows machine, I highly recommend that you instantiate the repository as it is (Julia 1.12.5). If you are in a unix machine, it may be helpful to update the manifest file by accessing the Package Manager mode (`]`) and typing `resolve` followed by `update`.

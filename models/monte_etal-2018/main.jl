@@ -2,6 +2,7 @@
 MRRH = Monte, Redding, and Rossi-Hansberg
 SW = Seidel and Wickerath
 ARSW = Afhdelt et. al
+MRRH2018 toolkit = https://github.com/Ahlfeldt/MRRH2018-toolkit
 "
 
 # *********************
@@ -80,10 +81,16 @@ Areaₙ = dataArea.Area;
 baseline = Matrix(no_traffic[:,2:end]);
 baseline = baseline';
 
+# *******************************************
+# **** Generating Model-Consistent Data  **** 
+# *******************************************
 
-@time Tᵢ, λₙᵢn_model, λₙᵢ_model, Lₙᵢ = get_bi_lamba(wₙ, baseline, Rₙ, Lₙ , L);  # The function gets λₙᵢn and λₙᵢ if you don't have it in your data. 
-                                                                             # If you do not have wₙ, let wₙ=1 and interpret transformed wages ωₙ = Tᵢ (close to eq. 26 of ARSW). 
-                                                                             # Then, we have that model-consistent wages can then be recovered as w̃ᵢ = Tᵢ .^ (1/ε) 
+# The function `get_bi_lamba` gets λₙᵢn and λₙᵢ if you don't have it in your data.
+# If you do not have wₙ, let wₙ=1 implying ωₙ = Tᵢ (nearby eq. 26 of ARSW). Then, we can solve for the model-consistent transformed wages w̃ᵢ = Tᵢ .^ (1/ε)
+@time Tᵢ, λₙᵢn_model, λₙᵢ_model, Lₙᵢ = get_bi_lamba(wₙ, baseline, Rₙ, Lₙ , L);   
+                                                                              
+# We must also use the model-consistent vₙ
+vₙ = λₙᵢn_model * wₙ; 
 
 # Let's compare the estimated λₙᵢ_model with the real λₙᵢ...
 df = DataFrame()
@@ -104,6 +111,7 @@ savefig("./figures/model_consistent_lambda_fit.png");
 # **** Productivity, Amenities and Trade Shares from Model Inversion  **** 
 # ************************************************************************
 
+# I will be using the given ̄vₙ, but you could use the model-consistent vₙ as well. We should expect similar results
 @time Aᵢ, πₙᵢ, Pₙ  = solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ);
 println("<<<<<<<<<<<<<<< Data compilation completed >>>>>>>>>>>>>>>")
 
@@ -119,9 +127,8 @@ descriptive_analysis(Lₙ, Areaₙ, Rₙ, distₙᵢ, comMat, Aᵢ, baseline, λ
 "
     Since this counterfatual analysis is not explained in neither research papers,
     it makes sense to have a brief discussion of what I am trying to implement. The
-    goal of this counterfactual exercise is to assess the GE effects of hypothetical
-    border that follows the border between formerly separated West Germany and East 
-    Germany.
+    goal of this counterfactual exercise is to assess the GE effects of a hypothetical
+    domestic border that reproduces the former separation between West and East Germany.
 "
 # ----------------- Border Data Prep --------------------
 
@@ -129,7 +136,7 @@ descriptive_analysis(Lₙ, Areaₙ, Rₙ, distₙᵢ, comMat, Aᵢ, baseline, λ
 east = zeros(J,1);
 east[325:end] .= 1 ;# Set elements from 325 to the end to 1 
 
-# Create the condition matrix using outer logical OR between East-West and West-East
+# Create the condition matrix between East-West or West-East counties (i.e., border cross-ups)
 conditionMatrix = ((east.==1) * (east.==0)') .+ ((east.==0) * (east.==1)');
 
 # Import border distance
@@ -169,9 +176,9 @@ wages, which shift the non-tradable good (housing) prices down.
 @time ŵₙ, v̄̂ₙ, P̂ₕₙ, π̂ₙᵢ, λ̂ₙᵢ, P̂ₙ, R̂ₙ, L̂ₙ, Ū̂ = counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ, κ̂ₙᵢ=κ̂ₙᵢ);
 
 # Map findings
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMM_Qchange.png"); 
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMM_Pchange.png") ;
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_COMM_Rchange.png") ;
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; commuting border", path_to="./figures/MAP_COUNT_BORDER_COMM_Qchange.png"); 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; commuting border", path_to="./figures/MAP_COUNT_BORDER_COMM_Pchange.png") ;
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; commuting border", path_to="./figures/MAP_COUNT_BORDER_COMM_Rchange.png") ;
 
 # -------------- Creating a *commuting* and *trade* border border between East and West Germany --------------
 
@@ -179,9 +186,9 @@ mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in
 @time ŵₙ, v̄̂ₙ, P̂ₕₙ, π̂ₙᵢ, λ̂ₙᵢ, P̂ₙ, R̂ₙ, L̂ₙ, Ū̂ = counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ, d̂ₙᵢ=d̂ₙᵢ, κ̂ₙᵢ=κ̂ₙᵢ);
 
 # Map findings
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Qchange.png") ;
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Pchange.png") ;
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Rchange.png") ;
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade and commuting border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Qchange.png") ;
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade and commuting border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Pchange.png") ;
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade and commuting border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Rchange.png") ;
 
 # Scatter plot of goods market impact 
 scatter(BorderDist_n, log.(P̂ₕₙ), 
@@ -190,6 +197,8 @@ scatter(BorderDist_n, log.(P̂ₕₙ),
         label = "Housing", 
         title="Effects of introducing a domestic border (prices)", 
         grid=true, 
+        yticks=-7:1:1,
+        ylims=(-7.5, 1),
         legend=:bottomleft)
 scatter!(BorderDist_n, log.(P̂ₙ), label = "Tradable goods", grid=true)
 savefig("./figures/scatter_COUNT_BORDER_COMMTRADE_PriceChanges.png");
@@ -201,12 +210,15 @@ scatter(BorderDist_n, log.(ŵₙ),
         label = "Wages", 
         title="Effects of introducing a domestic border (labour)", 
         grid=true, 
+        yticks=-6:1:1,
+        ylims=(-6.5, 1),
         legend=:bottomleft)
 scatter!(BorderDist_n, log.(L̂ₙ), label = "Employment", grid=true)
 savefig("./figures/scatter_COUNT_BORDER_COMMTRADE_LabourChanges.png");
 
 
 # -------------- Now repeat with half the trade cost --------------
+
 ψ = 0.21; dₙᵢ = distₙᵢ .^ ψ; # lowering trade costs
 
 # Productivity and trade shares from model inversion
@@ -216,9 +228,9 @@ savefig("./figures/scatter_COUNT_BORDER_COMMTRADE_LabourChanges.png");
 @time ŵₙ, v̄̂ₙ, P̂ₕₙ, π̂ₙᵢ, λ̂ₙᵢ, P̂ₙ, R̂ₙ, L̂ₙ, Ū̂ = counterFacts(wₙ,v̄ₙ,Lₙ,Rₙ,πₙᵢ,λₙᵢ, d̂ₙᵢ=d̂ₙᵢ, κ̂ₙᵢ=κ̂ₙᵢ);
 
 # Map findings
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Qchange_lowTradeCost.png"); 
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Pchange_lowTradeCost.png");
-mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Rchange_lowTradeCost.png");
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₕₙ),"Relative change in house price; trade and commuting border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Qchange_lowTradeCost.png"); 
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(P̂ₙ),"Relative change in tradable goods price; trade and commuting border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Pchange_lowTradeCost.png");
+mapit("./data/shapes/VG250_KRS_clean_final.shp",log.(R̂ₙ),"Relative change in population; trade and commuting border", path_to="./figures/MAP_COUNT_BORDER_COMMTRADE_Rchange_lowTradeCost.png");
 
 # Scatter plot of goods market impact 
 scatter(BorderDist_n, log.(P̂ₕₙ), 
@@ -227,6 +239,8 @@ scatter(BorderDist_n, log.(P̂ₕₙ),
         label = "Housing", 
         title="Effects of introducing a domestic border (prices)", 
         grid=true, 
+        yticks=-7:1:1,
+        ylims=(-7.5, 1),
         legend=:bottomleft)
 scatter!(BorderDist_n, log.(P̂ₙ), label = "Tradable goods", grid=true)
 savefig("./figures/scatter_COUNT_BORDER_COMMTRADE_PriceChanges_lowTradeCost.png");
@@ -238,6 +252,8 @@ scatter(BorderDist_n, log.(ŵₙ),
         label = "Wages", 
         title="Effects of introducing a domestic border (labour)", 
         grid=true, 
+        yticks=-6:1:1,
+        ylims=(-6.5, 1),
         legend=:bottomleft)
 scatter!(BorderDist_n, log.(L̂ₙ), label = "Employment", grid=true)
 savefig("./figures/scatter_COUNT_BORDER_COMMTRADE_LabourChanges_lowTradeCost.png");
