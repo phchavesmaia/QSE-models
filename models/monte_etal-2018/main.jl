@@ -56,7 +56,7 @@ L = sum(comMat);
 # wage data
 wₙ = labor_file.median_income_workplace;
 wₙ = wₙ ./ mean(wₙ); # normalization
-v̄ₙ = λₙᵢn * wₙ ;# expected residential income (eq. 14 in MRRH or eq. 6 in SW) -- this is in the 'model inversion' section
+v̄ₙ = λₙᵢn * wₙ ;# expected residential income (eq. 14 in MRRH or eq. 6 in SW)
 
 # demographics data
 Lₙ = sum(λₙᵢ, dims=1)' .* L; # people who work at n -- this is in the 'model inversion' section
@@ -71,7 +71,7 @@ lPₕₙ = log.(Pₕₙ);
 # distance data and computing trade costs from distances
 distₙᵢ =  Matrix(dataDistance[:,2:end]);
 distₙᵢ = distₙᵢ ./ minimum(distₙᵢ);
-dₙᵢ = distₙᵢ .^ ψ ;# nonumbered equation in both papers, but its on the "model inversion" section (fund. produc.)
+dₙᵢ = distₙᵢ .^ ψ ;# nonumbered equation in both papers, but it is on the "model inversion" section (fund. produc.)
 
 # geographic area
 Areaₙ = dataArea.Area;
@@ -80,11 +80,12 @@ Areaₙ = dataArea.Area;
 baseline = Matrix(no_traffic[:,2:end]);
 baseline = baseline';
 
-# creating getting λₙᵢn and λₙᵢ if you don't have it in your data. 
-# Moreover, if you do not have wₙ, let wₙ=1 and interpret transformed wages ωₙ = Tᵢ (eq. 26 of ARSW)
-# Under the assumption that workplace amenities Tᵢ = 1, we have that model-consistent wages can then be recovered as w̃ᵢ = T̂ᵢ .^ (1/ε), where T̂ᵢ is the function estimate
 
-@time Tᵢ, λₙᵢn_model, λₙᵢ_model, Lₙᵢ = get_bi_lamba(wₙ, baseline, Rₙ, Lₙ , L);  
+@time Tᵢ, λₙᵢn_model, λₙᵢ_model, Lₙᵢ = get_bi_lamba(wₙ, baseline, Rₙ, Lₙ , L);  # The function gets λₙᵢn and λₙᵢ if you don't have it in your data. 
+                                                                             # If you do not have wₙ, let wₙ=1 and interpret transformed wages ωₙ = Tᵢ (close to eq. 26 of ARSW). 
+                                                                             # Then, we have that model-consistent wages can then be recovered as w̃ᵢ = Tᵢ .^ (1/ε) 
+
+# Let's compare the estimated λₙᵢ_model with the real λₙᵢ...
 df = DataFrame()
 df[!,"real"] = vec(reshape(λₙᵢ,:,1))
 df[!,"model"] = vec(reshape(λₙᵢ_model,:,1))
@@ -99,9 +100,9 @@ annotate!(
     )
 savefig("./figures/model_consistent_lambda_fit.png");
 
-# *************************************************************
+# ************************************************************************
 # **** Productivity, Amenities and Trade Shares from Model Inversion  **** 
-# *************************************************************
+# ************************************************************************
 
 @time Aᵢ, πₙᵢ, Pₙ  = solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ);
 println("<<<<<<<<<<<<<<< Data compilation completed >>>>>>>>>>>>>>>")
@@ -240,4 +241,5 @@ scatter(BorderDist_n, log.(ŵₙ),
         legend=:bottomleft)
 scatter!(BorderDist_n, log.(L̂ₙ), label = "Employment", grid=true)
 savefig("./figures/scatter_COUNT_BORDER_COMMTRADE_LabourChanges_lowTradeCost.png");
+
 
