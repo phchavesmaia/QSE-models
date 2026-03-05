@@ -59,7 +59,7 @@ lwⱼ = lwⱼ .- mean(lwⱼ); # demean wages
 Vlwⱼ = var(lwⱼ); # compute variance of log wages, our empirical moment
 
 # computing ω and ε using 86 data
-ε, Ĥₘⱼ = get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ); 
+ε, Ĥₘⱼ, ωⱼ = get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ); # this ωⱼ has no economic meaning! It is estimated by assuming ε=1, so its only purpose is to be used as an initial guess to compute ε. 
 κ = ν/ε; # setting commuting decay to reduced-form estimate
 
 # 'validating' estimates
@@ -69,7 +69,7 @@ df[!,"data"] = vec(Hₘⱼ)
 reg(df,@formula(data ~ model))
 model = reg(df,@formula(data ~ model));
 slope = round(coef(model)[2],digits=6);
-println("The slope of the model-real workplace population data is: $slope")
+println("The slope of the model/real workplace population data is: $slope")
 
 # ********************************************************************************
 # *** Calibration of exogenous fundamentals (solving the equilibrium for 2006) ***
@@ -109,5 +109,5 @@ println("The slope of the model-real workplace population data is: $slope") # it
 mapit("./data/shapefile/Berlin4matlab1.shp",CMA,"Commuter market access", label_legend="", path_to="./figures/cma06.png")
 mapit("./data/shapefile/Berlin4matlab1.shp",Ãⱼ,"Productivity", label_legend="", path_to="./figures/productivity06.png") # this is clearly wrong!!!
 mapit("./data/shapefile/Berlin4matlab1.shp",B̃ᵢ,"Amenities", label_legend="", path_to="./figures/amenities06.png")
-mapit("./data/shapefile/Berlin4matlab1.shp",ϕᵢ,"", label_legend="")
+mapit("./data/shapefile/Berlin4matlab1.shp",ϕᵢ,"Density of Development", label_legend="", path_to="./figures/density06.png")
 

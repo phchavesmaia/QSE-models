@@ -1,5 +1,12 @@
-function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500)
-
+function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500, ε = 1)
+    "
+    This function solves for TRANSFORMED wages (ωⱼ) for given values of
+    workplace employment, residence employment, and bilateral commuting
+    costs. If ε is not provided, it will be set to 1 so that you can 
+    compute ω without having to compute ε first. This is useful for the 
+    initial guess of ω when computing ε, though it carries no economic
+    meaning.
+    "
     # initiate main loop and output variables
     ωⱼ  = zeros(size(Hₘⱼ,1),1); Ĥₘⱼ = zeros(size(Hₘⱼ,1),1);
     pos_employment = vec(Hₘⱼ.>0); pos_residence = vec(Hᵣᵢ.>0) ; # identifying places with firms and residents
@@ -9,10 +16,12 @@ function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500)
     τᵢⱼ = τᵢⱼ[findall(pos_employment),findall(pos_residence)]' ; 
     Hᵣᵢ = Hᵣᵢ[pos_residence]; 
     Hₘⱼ = Hₘⱼ[pos_employment];
-
-    # initial guess on ω 
+    evτᵢⱼ = exp.(ν .* τᵢⱼ); # pre-computing the exponent of the commuting decay for numerical efficiency
+    
+    # initial guess on transformed wages ωⱼ 
     ωⱼ0 = ωⱼ[pos_employment]; 
-    ωⱼ0=(((1-α)./Qⱼ[pos_employment]).^((1-α)/α)).*α; # Equation (12) which combines first-order condition and zero-profit conditions.
+    w̃ⱼ0 = (((1-α)./Qⱼ[pos_employment]).^((1-α)/α)).*α # initial guess on ADJUSTED wages following Equation (12) which combines first-order condition and zero-profit conditions, after setting Aⱼ = 1.
+    ωⱼ0 = w̃ⱼ0.^ε; # initial guess on TRANSFORMED wages using that ω = w̃^ε.
 
     # initiate Ĥₘⱼ
     local Ĥₘⱼ0 ;
@@ -21,15 +30,15 @@ function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500)
     println(">>>> Calibrating ω <<<<")
     while (err >= tol) & (x <= x_max)
         # Compute conditional commuting probabilities (equation 4)
-        πᵢⱼi = (ωⱼ0' ./ exp.(ν .* τᵢⱼ)) ./ sum(ωⱼ0' ./ exp.(ν .* τᵢⱼ), dims=2) ;
+        πᵢⱼi = (ωⱼ0' ./ evτᵢⱼ) ./ sum(ωⱼ0' ./ evτᵢⱼ, dims=2) ;
         # Compute predicted workplace employment (equation 7 or, more explicitly, equation 26 and S.44)
         Ĥₘⱼ0 = sum(πᵢⱼi .* Hᵣᵢ, dims=1)' ;
         # Compute Employment Gap and Check Convergence
         err = round(maximum(abs.(Ĥₘⱼ0 - Hₘⱼ)),digits = tol_digits) ;
         # Update ω guess
         ωⱼ1 = ωⱼ0 .* (Hₘⱼ ./ Ĥₘⱼ0) ;
-        # Apply damping to improve stability
-        ωⱼ0 = 0.75 .* ωⱼ0 + 0.25 .* ωⱼ1 ;
+        # Apply damping to improve stability (I will follow ARSW and use a 0.5 damping factor, even if 0.75/0.25 should be safer)
+        ωⱼ0 = 0.5 .* ωⱼ0 .+ 0.5 .* ωⱼ1 ;
         # Normalize wages to ensure geomean(ωⱼ) = 1
         ωⱼ0 = ωⱼ0 ./ geomean(ωⱼ0) ;
         # Print convergence rate
@@ -119,6 +128,6 @@ function get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits = 6, ε0=4, max
     # function evaluation : $num_evals
     """
     )
-    return minx[1], Ĥₘⱼ
+    return minx[1], Ĥₘⱼ, ωⱼ
     
 end

@@ -1,30 +1,29 @@
 function cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
-
+    "
+    This function assumes that you have predefined the parameters
+    ε, κ, α, β, and μ. It then computes the structural fundamentals 
+    of the model given the exogenous fundamentals (Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ).
+    The output of this function is the set of structural fundamentals
+    of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that 
+    are consistent with the exogenous fundamentals.
+    "
     # Identifying places with firms and residents
     pos_employment = vec(Hₘⱼ.>0); pos_residence = vec(Hᵣᵢ.>0) 
 
     # **************************************************
-    # *** w̃ⱼ (transformed wages) and Ãⱼ productivity ***
+    # *** w̃ⱼ (adjusted wages) and Ãⱼ (productivity) ****
     # **************************************************
     
-    # computing adjusted wages (ωⱼ) array
-    ωⱼ, Ĥₘⱼ = get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ, tol_digits=tol_digits); 
-    w̃ⱼ = ωⱼ .^ (1 / ε);  # remember that w̃ⱼ = ω^(1/ε) = wⱼEⱼ^(1/ε)
-    w̃ⱼ[w̃ⱼ .> 0] = w̃ⱼ[w̃ⱼ .> 0] ./ geomean(w̃ⱼ[w̃ⱼ .> 0]); # normalizing transformed wages
-
-    # 'validating' estimates
-    df = DataFrame();
-    df[!,"model"] = vec(Ĥₘⱼ);
-    df[!,"data"] = vec(Hₘⱼ);
-    model = reg(df,@formula(data ~ model));
-    slope = round(coef(model)[2],digits=tol_digits);
-    println("The slope of the model-real workplace population data is: $slope") # should be 1!
+    # computing transformed wages (ωⱼ) array
+    ωⱼ, Ĥₘⱼ = get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ, tol_digits=tol_digits, ε=ε); 
+    w̃ⱼ = ωⱼ .^ (1 / ε);  # recover adjusted wages by remembering that w̃ⱼ = ω^(1/ε) = wⱼEⱼ^(1/ε)
+    w̃ⱼ[w̃ⱼ .> 0] = w̃ⱼ[w̃ⱼ .> 0] ./ geomean(w̃ⱼ[w̃ⱼ .> 0]); # normalizing adjusted wages
     
     # Compute adjusted productivity (from equation 12) up to scale (due to wages)
     Ãⱼ = ((Qⱼ ./ (1 - α)) .^ (1 - α)) .* ((w̃ⱼ ./ α) .^ α);
     
     # **********************************************
-    # *** B̃ᵢ (amenities) and Market Access (CMA) ***
+    # *** B̃ᵢ (amenities) and CMA (Market Access) ***
     # **********************************************
 
     # Commuting market access (CMA) from eq. (29)
@@ -32,12 +31,12 @@ function cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
 
     # Amenities from equation (28) or (S.47)
     B̃ᵢ = zeros(size(Qⱼ,1),1); 
-    B̃ᵢ[pos_residence] = (Hᵣᵢ[pos_residence]./geomean(Hᵣᵢ[pos_residence])).^(1/ε) .*   (Qⱼ[pos_residence]./geomean(Qⱼ[pos_residence])).^(1-β) .* (CMAₐ).^(-1/ε) ;
+    B̃ᵢ[pos_residence] = (Hᵣᵢ[pos_residence]./geomean(Hᵣᵢ[pos_residence])).^(1/ε) .* (Qⱼ[pos_residence]./geomean(Qⱼ[pos_residence])).^(1-β) .* (CMAₐ).^(-1/ε) ;
     
     # *******************************************************************
     # *** Rescaling Ãⱼ, B̃ᵢ, and computing  πᵢⱼ (commuting flow prob.) ***
     # *******************************************************************
-
+        ### SHOULD I REALLY RESCALE?!?!
     # Normalize productivity to geomean 1
     Ãⱼ[pos_employment] = Ãⱼ[pos_employment]./geomean(Ãⱼ[pos_employment])
  
@@ -53,7 +52,7 @@ function cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
     B̃ᵢ[pos_residence] = B̃ᵢ[pos_residence] .* (sum(Hₘⱼ)./sum(ϕᵢⱼ)).^(1 ./ ε)
     "
     The authors measure utility in a unit measure s.t. (Ū/γ)ᵋ/H = 1, where γ = Γ(ε−1/ε) and Γ(·) is the Gamma function (See supplement p. 17).
-    Thus, it is implied that ϕ = H, as demonstrated in p. 18 of the supplement. Thus, if the population in the data (H) is greater than the 
+    Thus, it is implied that ϕ = H, as demonstrated in p. 18 of the supplement. Hence, if the population in the data (H) is greater than the 
     population in the model (ϕ), we increase the amenities to make the city more attractive and attract more residents.
     "
 
