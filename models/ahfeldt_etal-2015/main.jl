@@ -32,9 +32,9 @@ Random.seed!(s)
 α=0.80; β=0.75; μ=0.75; # Set parameter values to values from the literature                                                                  
 ν=κε=0.07; # Set commuting decay to reduced-form estimate (see ARSW table 3)
 
-# *****************************************************
-# *** Computing ω and the frechet-shape parameter ε ***
-# *****************************************************
+# ***************************************************************
+# *** Computing the frechet-shape parameter ε using 1986 data ***
+# ***************************************************************
 
 # read 1986 data
 fileIn = matopen("./data/input/prepdata_big_TD86.mat");
@@ -51,7 +51,7 @@ tt86rw = bilateral travel time matrix s.t. rows (i) denote workplaces and column
 bzk86rw = mapping of Blocks to Bezirkes
 ----------
 "
-S = Int64(dset["nobs86rw"]); Qⱼ = dset["floor86rw"]; Hₘⱼ = dset["empwpl86rw"] ; Hᵣᵢ = dset["emprsd86rw"]; τᵢⱼ = dset["tt86rw"]; # using the paper notation
+S = Int64(dset["nobs86rw"]); Qⱼ = dset["floor86rw"]; Hₘⱼ = dset["empwpl86rw"] ; Hᵣᵢ = dset["emprsd86rw"]; τᵢⱼ = dset["tt86rw"]'; # using the paper notation
 block_bzk = dset["bzk86rw"]; # map from blocks to districts 
 bzkwge = CSV.read("./data/input/wageworker1986.csv", DataFrame; header = false); # Bezirke (district) raw wage data
 lwⱼ = log.(bzkwge.Column2); # taking log
@@ -59,7 +59,7 @@ lwⱼ = lwⱼ .- mean(lwⱼ); # demean wages
 Vlwⱼ = var(lwⱼ); # compute variance of log wages, our empirical moment
 
 # computing ω and ε using 86 data
-ε, Ĥₘⱼ, ωⱼ = get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ); # this ωⱼ has no economic meaning! It is estimated by assuming ε=1, so its only purpose is to be used as an initial guess to compute ε. 
+ε, Ĥₘⱼ, ωⱼ = get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ); 
 κ = ν/ε; # setting commuting decay to reduced-form estimate
 
 # 'validating' estimates
@@ -91,7 +91,7 @@ bzk06 = mapping of Blocks to Bezirkes
 area06 = geographical area 
 ----------
 "
-S = Int64(dset["nobs06"]); Qⱼ = dset["floor06"]; Hₘⱼ = dset["empwpl06"] ; Hᵣᵢ = dset["emprsd06"]; τᵢⱼ = dset["tt06"]; Kᵢ = dset["area06"];
+S = Int64(dset["nobs06"]); Qⱼ = dset["floor06"]; Hₘⱼ = dset["empwpl06"] ; Hᵣᵢ = dset["emprsd06"]; τᵢⱼ = dset["tt06"]'; Kᵢ = dset["area06"];
 block_bzk06 = dset["bzk06"];
 
 # computing structural fundamentals of the model
@@ -107,7 +107,16 @@ println("The slope of the model-real workplace population data is: $slope") # it
 
 # plotting some maps
 mapit("./data/shapefile/Berlin4matlab1.shp",CMA,"Commuter market access", label_legend="", path_to="./figures/cma06.png")
-mapit("./data/shapefile/Berlin4matlab1.shp",Ãⱼ,"Productivity", label_legend="", path_to="./figures/productivity06.png") # this is clearly wrong!!!
+mapit("./data/shapefile/Berlin4matlab1.shp",Ãⱼ,"Productivity", label_legend="", path_to="./figures/productivity06.png")
 mapit("./data/shapefile/Berlin4matlab1.shp",B̃ᵢ,"Amenities", label_legend="", path_to="./figures/amenities06.png")
 mapit("./data/shapefile/Berlin4matlab1.shp",ϕᵢ,"Density of Development", label_legend="", path_to="./figures/density06.png")
 
+# ****************************
+# *** Counterfactuals Prep ***
+# ****************************
+
+fileIn = matopen("./data/input/roptimis_all_big.mat");
+dset = read(fileIn);
+
+# parameters from the GMM estimation of the full model (section 7.3-7.5 of the paper)
+κε = dset["ThetaA"][1]

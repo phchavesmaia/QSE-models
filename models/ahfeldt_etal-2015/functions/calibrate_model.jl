@@ -2,7 +2,13 @@ function cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
     "
     This function assumes that you have predefined the parameters
     ε, κ, α, β, and μ. It then computes the structural fundamentals 
-    of the model given the exogenous fundamentals (Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ).
+    of the model given the exogenous fundamentals:
+        1. Qⱼ = rent prices; 
+        2. Hₘⱼ = workplace employment (population);
+        3. Hᵣᵢ = residential employment (population);
+        4. τᵢⱼ = bilateral travel time matrix s.t. rows (i) denote 
+            residences and columns (j) denote workplaces; and
+        5. Kᵢ = geographical area.
     The output of this function is the set of structural fundamentals
     of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that 
     are consistent with the exogenous fundamentals.
@@ -22,12 +28,12 @@ function cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
     # Compute adjusted productivity (from equation 12) up to scale (due to wages)
     Ãⱼ = ((Qⱼ ./ (1 - α)) .^ (1 - α)) .* ((w̃ⱼ ./ α) .^ α);
     
-    # **********************************************
-    # *** B̃ᵢ (amenities) and CMA (Market Access) ***
-    # **********************************************
+    # *******************************************************
+    # *** B̃ᵢ (adjusted amenities) and CMA (Market Access) ***
+    # *******************************************************
 
     # Commuting market access (CMA) from eq. (29)
-    CMA = sum(ωⱼ'./exp.(ν.*τᵢⱼ'), dims=2); CMAₐ = CMA[pos_residence]; CMAₐ = CMAₐ./geomean(CMAₐ); 
+    CMA = sum(ωⱼ'./exp.(ν.*τᵢⱼ), dims=2); CMAₐ = CMA[pos_residence]; CMAₐ = CMAₐ./geomean(CMAₐ); 
 
     # Amenities from equation (28) or (S.47)
     B̃ᵢ = zeros(size(Qⱼ,1),1); 
@@ -36,20 +42,20 @@ function cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
     # *******************************************************************
     # *** Rescaling Ãⱼ, B̃ᵢ, and computing  πᵢⱼ (commuting flow prob.) ***
     # *******************************************************************
-        ### SHOULD I REALLY RESCALE?!?!
+        ### SHOULD I REALLY RESCALE WAGES?!?! [camen.m] + [calcal_adj_TD.m]
     # Normalize productivity to geomean 1
     Ãⱼ[pos_employment] = Ãⱼ[pos_employment]./geomean(Ãⱼ[pos_employment])
  
-    # Change wages to be consistent the normalization on productivity (eq. 12)
+    # Change wages to be consistent with the normalization on productivity (eq. 12)
     w̃ⱼ[pos_employment] = (Ãⱼ[pos_employment].^(1/α)).*α.*((1-α)./Qⱼ[pos_employment]).^((1-α)/α)
 
     # Compute bilateral commuting probabilities (eq. 4)
-    πᵢⱼ = zeros(size(Hᵣᵢ,1),size(Hₘⱼ,1)); dᵢⱼ= exp.(κ.*τᵢⱼ[findall(pos_employment),findall(pos_residence)]')
-    ϕᵢⱼ = (B̃ᵢ[pos_residence].*w̃ⱼ[pos_employment]').^ε .* (dᵢⱼ.*Qⱼ[pos_residence].^(1-β)).^(-ε);	
-    πᵢⱼ[findall(pos_residence),findall(pos_employment)] = ϕᵢⱼ ./ sum(ϕᵢⱼ);
+    πᵢⱼ = zeros(size(Hᵣᵢ,1),size(Hₘⱼ,1)); dᵢⱼ= exp.(κ.*τᵢⱼ[findall(pos_residence),findall(pos_employment)])
+    Φᵢⱼ = (B̃ᵢ[pos_residence].*w̃ⱼ[pos_employment]').^ε .* (dᵢⱼ.*Qⱼ[pos_residence].^(1-β)).^(-ε); # total population in the model
+    πᵢⱼ[findall(pos_residence),findall(pos_employment)] = Φᵢⱼ ./ sum(Φᵢⱼ);
 
     # Normalizing amenities to match data population
-    B̃ᵢ[pos_residence] = B̃ᵢ[pos_residence] .* (sum(Hₘⱼ)./sum(ϕᵢⱼ)).^(1 ./ ε)
+    B̃ᵢ[pos_residence] = B̃ᵢ[pos_residence] .* (sum(Hₘⱼ)./sum(Φᵢⱼ)).^(1/ε)
     "
     The authors measure utility in a unit measure s.t. (Ū/γ)ᵋ/H = 1, where γ = Γ(ε−1/ε) and Γ(·) is the Gamma function (See supplement p. 17).
     Thus, it is implied that ϕ = H, as demonstrated in p. 18 of the supplement. Hence, if the population in the data (H) is greater than the 

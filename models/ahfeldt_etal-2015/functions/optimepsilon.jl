@@ -3,9 +3,7 @@ function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500, ε = 1
     This function solves for TRANSFORMED wages (ωⱼ) for given values of
     workplace employment, residence employment, and bilateral commuting
     costs. If ε is not provided, it will be set to 1 so that you can 
-    compute ω without having to compute ε first. This is useful for the 
-    initial guess of ω when computing ε, though it carries no economic
-    meaning.
+    compute the initial guess of ω without having to compute ε first.
     "
     # initiate main loop and output variables
     ωⱼ  = zeros(size(Hₘⱼ,1),1); Ĥₘⱼ = zeros(size(Hₘⱼ,1),1);
@@ -13,7 +11,7 @@ function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500, ε = 1
     x=1; err = 10000; tol = 10.0^(-tol_digits); # defining loop variables
 
     # now, I ONLY care for places that are being used 
-    τᵢⱼ = τᵢⱼ[findall(pos_employment),findall(pos_residence)]' ; 
+    τᵢⱼ = τᵢⱼ[findall(pos_residence),findall(pos_employment)] ; 
     Hᵣᵢ = Hᵣᵢ[pos_residence]; 
     Hₘⱼ = Hₘⱼ[pos_employment];
     evτᵢⱼ = exp.(ν .* τᵢⱼ); # pre-computing the exponent of the commuting decay for numerical efficiency
@@ -40,7 +38,7 @@ function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500, ε = 1
         # Apply damping to improve stability (I will follow ARSW and use a 0.5 damping factor, even if 0.75/0.25 should be safer)
         ωⱼ0 = 0.5 .* ωⱼ0 .+ 0.5 .* ωⱼ1 ;
         # Normalize wages to ensure geomean(ωⱼ) = 1
-        ωⱼ0 = ωⱼ0 ./ geomean(ωⱼ0) ;
+        ωⱼ0 = ωⱼ0 ./ geomean(ωⱼ0);
         # Print convergence rate
         println([x, trunc(err / tol, digits=0)])
         x += 1;
