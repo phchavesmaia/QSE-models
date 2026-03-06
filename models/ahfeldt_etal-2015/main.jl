@@ -1,7 +1,7 @@
 # *********************
 # **** Load Files  **** 
 # *********************
-using  Plots, LaTeXStrings, FixedEffectModels, GeoStats, GeoIO, CSV, DataFrames, Statistics, LinearAlgebra, MAT, Random, StatsBase, NLopt, BenchmarkTools
+using  Plots, LaTeXStrings, FixedEffectModels, GeoStats, GeoIO, CSV, DataFrames, Statistics, LinearAlgebra, MAT, Random, StatsBase, NLopt, BenchmarkTools, SpecialFunctions
 import CairoMakie as Mke
 
 function load_dir(dir::String)
@@ -32,9 +32,9 @@ Random.seed!(s)
 α=0.80; β=0.75; μ=0.75; # Set parameter values to values from the literature                                                                  
 ν=κε=0.07; # Set commuting decay to reduced-form estimate (see ARSW table 3)
 
-# ***************************************************************
-# *** Computing the frechet-shape parameter ε using 1986 data ***
-# ***************************************************************
+# ****************************************************************
+# *** Estimating the frechet-shape parameter ε using 1986 data ***
+# ****************************************************************
 
 # read 1986 data
 fileIn = matopen("./data/input/prepdata_big_TD86.mat");
@@ -71,9 +71,9 @@ model = reg(df,@formula(data ~ model));
 slope = round(coef(model)[2],digits=6);
 println("The slope of the model/real workplace population data is: $slope")
 
-# ********************************************************************************
-# *** Calibration of exogenous fundamentals (solving the equilibrium for 2006) ***
-# ********************************************************************************
+# ********************************************************************************************
+# *** Calibration of exogenous fundamentals (SEQUENTIAL; solving the equilibrium for 2006) ***
+# ********************************************************************************************
 
 # read 2006 data
 fileIn = matopen("./data/input/prepdata_big_TD.mat");
@@ -95,7 +95,7 @@ S = Int64(dset["nobs06"]); Qⱼ = dset["floor06"]; Hₘⱼ = dset["empwpl06"] ; 
 block_bzk06 = dset["bzk06"];
 
 # computing structural fundamentals of the model
-Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
+Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
 
 # indirectly 'validating' bilateral commuting probabilities calibration
 df = DataFrame()
@@ -111,12 +111,7 @@ mapit("./data/shapefile/Berlin4matlab1.shp",Ãⱼ,"Productivity", label_legend=
 mapit("./data/shapefile/Berlin4matlab1.shp",B̃ᵢ,"Amenities", label_legend="", path_to="./figures/amenities06.png")
 mapit("./data/shapefile/Berlin4matlab1.shp",ϕᵢ,"Density of Development", label_legend="", path_to="./figures/density06.png")
 
-# ****************************
-# *** Counterfactuals Prep ***
-# ****************************
+# ********************************************************************************************
+# *** Calibration of exogenous fundamentals (SIMULTANEOUS; solving the equilibrium for 2006) ***
+# ********************************************************************************************
 
-fileIn = matopen("./data/input/roptimis_all_big.mat");
-dset = read(fileIn);
-
-# parameters from the GMM estimation of the full model (section 7.3-7.5 of the paper)
-κε = dset["ThetaA"][1]

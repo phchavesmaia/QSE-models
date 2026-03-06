@@ -67,12 +67,15 @@ function get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits = 6, ε0=4, max
     # **********************************************************    
 
     function get_fϵ(ε)
+        
         # *******************
         # ****** Wages ******
         # *******************
+
+        # compute payroll at the block level
         w̃ⱼ = ωⱼ .^ (1/ε);
         w̃ⱼ[w̃ⱼ.>0] = w̃ⱼ[w̃ⱼ.>0]./geomean(w̃ⱼ[w̃ⱼ.>0]) # normalizing after the change
-        payroll = w̃ⱼ.* Hₘⱼ # generate the payrolls
+        payroll = w̃ⱼ.* Hₘⱼ 
         # aggregating payroll to Bezirke level
         df = DataFrame([payroll block_bzk], :auto)
         grouped_df = combine(groupby(df, :x2), :x1 => mean => :mean_value, :x1 => length => :count)
@@ -86,9 +89,11 @@ function get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits = 6, ε0=4, max
         lw̃ⱼbzk=log.(w̃ⱼbzk)                                                  
         lw̃ⱼbzk=lw̃ⱼbzk.-mean(lw̃ⱼbzk)                                                
         Vlw̃ⱼbzk=var(lw̃ⱼbzk)
+
         # *******************************
         # ****** Moment Conditions ******
         # *******************************
+
         ftD = Vlw̃ⱼbzk - Vlwⱼ; # error
         ftt = ftD^2 .* 10.0^6; # square error (multiplied for numerical consistency), equivalent to equation S.64
         "

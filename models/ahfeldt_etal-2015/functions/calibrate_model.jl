@@ -1,4 +1,4 @@
-function cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
+function cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
     "
     This function assumes that you have predefined the parameters
     ε, κ, α, β, and μ. It then computes the structural fundamentals 
@@ -12,6 +12,11 @@ function cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
     The output of this function is the set of structural fundamentals
     of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that 
     are consistent with the exogenous fundamentals.
+    --- IGNORE ---
+    This function solves for the equilibrium of the model by iterating 
+    over wages to assess for the equilibrium productivity. All else is
+    sequentially (and algebraically) derived from these results, being 
+    (re)scaled to match the data.
     "
     # Identifying places with firms and residents
     pos_employment = vec(Hₘⱼ.>0); pos_residence = vec(Hᵣᵢ.>0) 
@@ -42,7 +47,7 @@ function cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
     # *******************************************************************
     # *** Rescaling Ãⱼ, B̃ᵢ, and computing  πᵢⱼ (commuting flow prob.) ***
     # *******************************************************************
-        ### SHOULD I REALLY RESCALE WAGES?!?! [camen.m] + [calcal_adj_TD.m]
+        
     # Normalize productivity to geomean 1
     Ãⱼ[pos_employment] = Ãⱼ[pos_employment]./geomean(Ãⱼ[pos_employment])
  
@@ -102,3 +107,95 @@ function cal_model(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
 
     return Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end
+
+function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_max=1000)
+    "
+    This function assumes that you have predefined the parameters
+    ε, κ, α, β, and μ. It then computes the structural fundamentals 
+    of the model given the exogenous fundamentals:
+        1. Qⱼ = rent prices; 
+        2. Hₘⱼ = workplace employment (population);
+        3. Hᵣᵢ = residential employment (population);
+        4. τᵢⱼ = bilateral travel time matrix s.t. rows (i) denote 
+            residences and columns (j) denote workplaces; and
+        5. Kᵢ = geographical area.
+    The output of this function is the set of structural fundamentals
+    of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that 
+    are consistent with the exogenous fundamentals.
+    --- IGNORE ---
+    This function solves for the equilibrium of the model by simultaneously
+    iterating over guesses of Ãⱼ and B̃ᵢ up until convergence is achieved.
+    "
+    # Identifying places with firms and residents
+    pos_employment = vec(Hₘⱼ.>0); pos_residence = vec(Hᵣᵢ.>0) 
+
+    # Defining initial guesses
+    Ãⱼ0 = zeros(size(Qⱼ,1),1); Ãⱼ0[pos_employment] = 1;
+    B̃ᵢ0 = zeros(size(Qⱼ,1),1); B̃ᵢ0[pos_residence] = 1;
+    
+    # initiating variables to be updated in the loop
+    w̃ⱼ = zeros(size(Qⱼ,1),1); πᵢⱼ = zeros(size(Hᵣᵢ,1),size(Hₘⱼ,1));
+    Tw̃ᵢ = zeros(size(Qⱼ,1),1);
+    # Setting up convergence criteria and additional variables
+    iter=1; err_Ãⱼ = 10000; err_B̃ᵢ = 10000; tol = 10.0^(-tol_digits);
+    γ = gamma((ε-1)/ε); # scalar for expected utility (equation 9)
+    dᵢⱼ= exp.(κ.*τᵢⱼ[findall(pos_residence),findall(pos_employment)]) # iceberg commuting cost, by assumption
+    
+    # initiate the model loop
+    local H̃ₘⱼ, H̃ᵣᵢ
+    println(">>>> Calibrating Ã and B̃ <<<<")
+    while  (err_Ãⱼ >= tol) & (err_B̃ᵢ >= tol) & (iter <= iter_max)
+        
+        # Guess wages using the first-order condition (equation 12)
+        w̃ⱼ[pos_employment] = (((1-α)./Qⱼ[pos_employment]).^((1-α)/α)).*α.*(Ãⱼ0[pos_employment].^(1/α));
+        
+        # Compute bilateral commuting probabilities (eq. 4)
+        Φᵢⱼ = (B̃ᵢ0[pos_residence].*w̃ⱼ[pos_employment]').^ε .* (dᵢⱼ.*Qⱼ[pos_residence].^(1-β)).^(-ε); # total population in the model
+        πᵢⱼ[findall(pos_residence),findall(pos_employment)] = Φᵢⱼ ./ sum(Φᵢⱼ); # unconditional commuting probabilities
+
+        # Compute predicted residence and workplace employment from definition
+        H̃ₘⱼ = sum(πᵢⱼ, dims=1)' .* sum(Hₘⱼ);
+        H̃ᵣᵢ = sum(πᵢⱼ, dims=2) .* sum(Hₘⱼ);
+
+        # Updating guesses
+        Ãⱼ1[pos_employment] = (Hₘⱼ[pos_employment]./H̃ₘⱼ).^(1/ε) .* Ãⱼ0 # slightly increase productivity if predicted employment is lower than data
+        B̃ᵢ1[pos_residence] = (Hᵣᵢ[pos_residence]./H̃ᵣᵢ).^(1/ε) .* B̃ᵢ0 # slightly increase amenities if predicted population is lower than data
+        
+        # Check if updated values are valid (i.e. non-nan)
+        if (sum(isnan.(Ãⱼ1)) > 0) || (sum(isnan.(B̃ᵢ1)) > 0)
+            # set to random values around 1
+            Ãⱼ1[pos_employment] = 0.95+(1.05-0.95)*rand(length(Ãⱼ1[pos_employment])) 
+            B̃ᵢ1[pos_residence] = 0.95+(1.05-0.95)*rand(length(B̃ᵢ1[pos_residence]))
+        end
+        
+        # Damping the updates to improve stability (I will follow ARSW and use a 0.5 damping factor, even if 0.75/0.25 should be safer)
+        Ãⱼ0 = 0.5 .* Ãⱼ0 .+ 0.5 .* Ãⱼ1 ;
+        B̃ᵢ0 = 0.5 .* B̃ᵢ0 .+ 0.5 .* B̃ᵢ1 ;
+
+        # Normalizing productivity to geomean 1
+        Ãⱼ0[pos_employment] = Ãⱼ0[pos_employment]./geomean(Ãⱼ0[pos_employment]);
+
+        # Normalizing amenities to match data population
+        B̃ᵢ0[pos_residence] = B̃ᵢ0[pos_residence] .* (sum(Hₘⱼ)./sum(Φᵢⱼ)).^(1/ε)
+
+        # Update iteration variables
+        iter += 1; 
+        err_Ãⱼ = round(maximum(abs.(Ãⱼ1 - Ãⱼ0)),digits=tol_digits); 
+        err_B̃ᵢ = round(maximum(abs.(B̃ᵢ1 - B̃ᵢ0)),digits=tol_digits);
+
+        # Print convergence rate
+        println([iter, trunc(err_Ãⱼ / tol, digits=0), trunc(err_B̃ᵢ / tol, digits=0)])
+    end
+    if iter==iter_max
+        error("Convergence not achieved for adjusted wages Ã and B̃")
+    end
+    println(">>>> Ã and B̃ Converged <<<<")
+
+    # Compute total expected residential worker income (eq. S20)
+    Tw̃ᵢ[pos_residence] = sum(πᵢⱼ[findall(pos_residence),findall(pos_employment)] ./ sum(πᵢⱼ, dims=2)[pos_residence] .* w̃ⱼ[pos_employment]' , dims=2) .* H̃ᵣᵢ;
+
+    # Compute CMA (equation 29)
+    CMA = sum(πᵢⱼ'./exp.(ν.*τᵢⱼ), dims=2); CMAₐ = CMA[pos_residence]; CMAₐ = CMAₐ./geomean(CMAₐ);
+    
+    return Ãⱼ0, B̃ᵢ0, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, CMA
+end 
