@@ -8,7 +8,7 @@ It follows a list of what remains to be implemented:
 - [X] Test whether the results of the calibration function return identical results to Ahlfeldt (2024).
     - [X] Sequential algorithim;
     - [X] Simultaneous algorithm;
-    - [X] Both algorithms agree.
+    - [X] Both algorithms return identical results.
 - [ ] Implement the counterfactual exercises with **exogenous** fundamentals.
 - [ ] Implement the counterfactual exercises with **endogenous** fundamentals
 
