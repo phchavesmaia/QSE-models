@@ -111,7 +111,7 @@ savefig("./figures/model_consistent_lambda_fit.png");
 # **** Productivity, Amenities and Trade Shares from Model Inversion  **** 
 # ************************************************************************
 
-# I will be using the given ̄vₙ, but you could use the model-consistent vₙ as well. We should expect similar results
+# I will be using the given v̄ₙ, but you could use the model-consistent vₙ as well. We should expect similar results
 @time Aᵢ, πₙᵢ, Pₙ  = solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ);
 println("<<<<<<<<<<<<<<< Data compilation completed >>>>>>>>>>>>>>>")
 

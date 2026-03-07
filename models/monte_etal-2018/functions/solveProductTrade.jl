@@ -1,8 +1,8 @@
 function solveProductTrade(Lₙ, Rₙ, wₙ, v̄ₙ, dₙᵢ; tol_digits=4)
 
     "
-    This function recovers fundamental productivities that satisfy the  
-    equals expenditure condition and uses them to comute trade   
+    This function recovers fundamental productivities that   
+    equals the expenditure condition and uses them to comute trade   
     trade shares and the tradable goods price index  
     
     This is fundamentally based on Eqs. (10) and (12) of SW

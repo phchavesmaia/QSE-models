@@ -14,7 +14,7 @@ function load_dir(dir::String)
 end
 
 try 
-    cd("D:/Dropbox/learn-julia/qse/models/ahfeldt_etal-2015/")
+    cd("/home/phchavesmaia/Dropbox/learn-julia/qse/models/ahfeldt_etal-2015")
 catch
     cd("C:/Users/pedro.maia/Dropbox/learn-julia/qse/models/ahfeldt_etal-2015/")
 end
@@ -71,9 +71,9 @@ model = reg(df,@formula(data ~ model));
 slope = round(coef(model)[2],digits=6);
 println("The slope of the model/real workplace population data is: $slope")
 
-# ********************************************************************************************
-# *** Calibration of exogenous fundamentals (SEQUENTIAL; solving the equilibrium for 2006) ***
-# ********************************************************************************************
+# ********************************************************************************
+# *** Calibration of exogenous fundamentals (solving the equilibrium for 2006) ***
+# ********************************************************************************
 
 # read 2006 data
 fileIn = matopen("./data/input/prepdata_big_TD.mat");
@@ -94,16 +94,39 @@ area06 = geographical area
 S = Int64(dset["nobs06"]); Qⱼ = dset["floor06"]; Hₘⱼ = dset["empwpl06"] ; Hᵣᵢ = dset["emprsd06"]; τᵢⱼ = dset["tt06"]'; Kᵢ = dset["area06"];
 block_bzk06 = dset["bzk06"];
 
-# computing structural fundamentals of the model
+# computing the structural fundamentals of the model SEQUENTIALLY
 Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
 
+# computing the structural fundamentals of the model SIMULTANEOUSLY
+Ãⱼsim, B̃ᵢsim, w̃ⱼsim, πᵢⱼsim, Tw̃ᵢsim, ϕᵢsim, Lᵢᴰsim, θᵢsim, H̃ₘⱼsim, H̃ᵣᵢsim, CMAsim = cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
+
+# Defining a sanity check function
+function snty_check(v1,v2; tol=6)
+    df = DataFrame()
+    df[!,"model"] = vec(v1)
+    df[!,"data"] = vec(v2)
+    model = reg(df,@formula(data ~ model));
+    slope = round(coef(model)[2],digits=tol);
+    return slope
+end
+
+# sanity check that both algorithms derive the same results
+snty_check_list = [
+    snty_check(Ãⱼ, Ãⱼsim), 
+    snty_check(B̃ᵢ, B̃ᵢsim),
+    snty_check(w̃ⱼ, w̃ⱼsim),
+    snty_check(πᵢⱼ, πᵢⱼsim),
+    snty_check(Tw̃ᵢ, Tw̃ᵢsim), 
+    snty_check(ϕᵢ, ϕᵢsim), 
+    snty_check(Lᵢᴰ, Lᵢᴰsim), 
+    snty_check(θᵢ, θᵢsim), 
+    snty_check(H̃ₘⱼ, H̃ₘⱼsim), 
+    snty_check(H̃ᵣᵢ, H̃ᵣᵢsim), 
+    snty_check(CMA, CMAsim, tol=5)];
+println("Are the sequential and simultaneous algorithms agreeing? $(sum(snty_check_list)==11)")
+
 # indirectly 'validating' bilateral commuting probabilities calibration
-df = DataFrame()
-df[!,"model"] = vec(H̃ₘⱼ)
-df[!,"data"] = vec(Hₘⱼ)
-model = reg(df,@formula(data ~ model));
-slope = round(coef(model)[2],digits=6);
-println("The slope of the model-real workplace population data is: $slope") # it should be 1!
+println("The slope of the model-real workplace population data is: $(snty_check(Hₘⱼ,H̃ₘⱼ))") # it should be 1!
 
 # plotting some maps
 mapit("./data/shapefile/Berlin4matlab1.shp",CMA,"Commuter market access", label_legend="", path_to="./figures/cma06.png")
@@ -111,7 +134,6 @@ mapit("./data/shapefile/Berlin4matlab1.shp",Ãⱼ,"Productivity", label_legend=
 mapit("./data/shapefile/Berlin4matlab1.shp",B̃ᵢ,"Amenities", label_legend="", path_to="./figures/amenities06.png")
 mapit("./data/shapefile/Berlin4matlab1.shp",ϕᵢ,"Density of Development", label_legend="", path_to="./figures/density06.png")
 
-# ********************************************************************************************
-# *** Calibration of exogenous fundamentals (SIMULTANEOUS; solving the equilibrium for 2006) ***
-# ********************************************************************************************
+
+
 
