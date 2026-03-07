@@ -125,14 +125,14 @@ snty_check_list = [
     snty_check(CMA, CMAsim, tol=5)];
 println("Are the sequential and simultaneous algorithms agreeing? $(sum(snty_check_list)==11)")
 
-# indirectly 'validating' bilateral commuting probabilities calibration
-println("The slope of the model-real workplace population data is: $(snty_check(Hₘⱼ,H̃ₘⱼ))") # it should be 1!
+# indirectly 'validating' bilateral commuting probabilities calibration (it should be 1!)
+println("The slope of the model-real workplace population data is: $(snty_check(Hₘⱼ,H̃ₘⱼ))")
 
 # plotting some maps
-mapit("./data/shapefile/Berlin4matlab1.shp",CMA,"Commuter market access", label_legend="", path_to="./figures/cma06.png")
-mapit("./data/shapefile/Berlin4matlab1.shp",Ãⱼ,"Productivity", label_legend="", path_to="./figures/productivity06.png")
-mapit("./data/shapefile/Berlin4matlab1.shp",B̃ᵢ,"Amenities", label_legend="", path_to="./figures/amenities06.png")
-mapit("./data/shapefile/Berlin4matlab1.shp",ϕᵢ,"Density of Development", label_legend="", path_to="./figures/density06.png")
+mapit("./data/shapefile/Berlin4matlab1.shp",CMA,"Commuter market access", label_legend="", path_to="./figures/cma06.png");
+mapit("./data/shapefile/Berlin4matlab1.shp",Ãⱼ,"Productivity", label_legend="", path_to="./figures/productivity06.png");
+mapit("./data/shapefile/Berlin4matlab1.shp",B̃ᵢ,"Amenities", label_legend="", path_to="./figures/amenities06.png");
+mapit("./data/shapefile/Berlin4matlab1.shp",ϕᵢ,"Density of Development", label_legend="", path_to="./figures/density06.png");
 
 
 

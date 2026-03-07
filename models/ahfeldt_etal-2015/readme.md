@@ -6,6 +6,9 @@ Since `GeoIO.jl' doesn't support EPSG:3068, I reproject the data to EPSG:3035 us
 
 It follows a list of what remains to be implemented:
 - [X] Test whether the results of the calibration function return identical results to Ahlfeldt (2024).
+    - [X] Sequential algorithim;
+    - [X] Simultaneous algorithm;
+    - [X] Both algorithms agree.
 - [ ] Implement the counterfactual exercises with **exogenous** fundamentals.
 - [ ] Implement the counterfactual exercises with **endogenous** fundamentals
 
