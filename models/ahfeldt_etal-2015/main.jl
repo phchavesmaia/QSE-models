@@ -1,7 +1,7 @@
 # *********************
 # **** Load Files  **** 
 # *********************
-using  Plots, LaTeXStrings, FixedEffectModels, GeoStats, GeoIO, CSV, DataFrames, Statistics, LinearAlgebra, MAT, Random, StatsBase, NLopt, BenchmarkTools, SpecialFunctions
+using  Plots, LaTeXStrings, FixedEffectModels, GeoStats, GeoIO, CSV, DataFrames, Statistics, LinearAlgebra, MAT, Random, StatsBase, Optimization, OptimizationNLopt, BenchmarkTools, SparseArrays
 import CairoMakie as Mke
 
 function load_dir(dir::String)
@@ -59,7 +59,7 @@ lwⱼ = lwⱼ .- mean(lwⱼ); # demean wages
 Vlwⱼ = var(lwⱼ); # compute variance of log wages, our empirical moment
 
 # computing ω and ε using 86 data
-ε, Ĥₘⱼ, ωⱼ = get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ); 
+ε, Ĥₘⱼ, ωⱼ = get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ, su=block_bzk); 
 κ = ν/ε; # setting commuting decay to reduced-form estimate
 
 # 'validating' estimates
@@ -134,6 +134,7 @@ mapit("./data/shapefile/Berlin4matlab1.shp",Ãⱼ,"Productivity", label_legend=
 mapit("./data/shapefile/Berlin4matlab1.shp",B̃ᵢ,"Amenities", label_legend="", path_to="./figures/amenities06.png");
 mapit("./data/shapefile/Berlin4matlab1.shp",ϕᵢ,"Density of Development", label_legend="", path_to="./figures/density06.png");
 
-
-
+# **********************************************************
+# *** Counterfactual exercises w/ exogenous fundamentals *** 
+# **********************************************************
 

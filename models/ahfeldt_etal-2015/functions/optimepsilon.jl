@@ -54,83 +54,110 @@ function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500, ε = 1
     return ωⱼ, Ĥₘⱼ
 end
 
-function get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits = 6, ε0=4, maxiter=1000)
+function payroll_aggregator(su)
+    "
+    The su (spatial unit) variable is a map between smaller
+    spatial units, such as blocks, to larger spatial
+    units (lsu), such as districts. Each line of `spatial_unit`
+    regards a specific su in accordance to the row number, 
+    whereas its values correspond to the lsu. 
+    "
+    lsu = unique(su);
+    n_su = length(su);
+
+    # indexing the lsu
+    lsu_map = Dict(id => i for (i,id) in enumerate(lsu));
+
+    # building sparse matrix A where A[lsu_index,su_index] = 1, i.e., 
+    # it indicates 1 if a su is part of a lsu. Naturally, A is n_lsu x n_su.
+    I = vec([lsu_map[id] for id in su]); # translates su values (lsu code) to index (lsu_map values)
+    J = 1:n_su;
+    V = ones(n_su);
+    S = sparse(I, J, V); 
+    return S
+end
+
+function get_fϵ(u,p)
+    "
+    Defining the objective function of the minimization problem
+    to find ε.
+    "
+    
+    # *************************
+    # *** Unpack parameters ***
+    # *************************
+    ε = u[1];
+    S, Hₘⱼ, ωⱼ, Vlwⱼ = p;
+
+    # *******************
+    # ****** Wages ******
+    # *******************
+
+    # compute payroll at the block level
+    w̃ⱼ = ωⱼ .^ (1/ε);
+    w̃ⱼ[w̃ⱼ.>0] = w̃ⱼ[w̃ⱼ.>0]./geomean(w̃ⱼ[w̃ⱼ.>0]); # normalizing after the change
+    payroll_su = w̃ⱼ.* Hₘⱼ;
+
+    # aggregating payroll and labor to lsu levels
+    payroll_lsu = A * payroll_su;
+    labor_lsu = A * Hₘⱼ;
+
+    # getting wages at the lsu level
+    w̃ⱼ_lsu = payroll_lsu./labor_lsu;
+    lw̃ⱼ_lsu=log.(w̃ⱼ_lsu);                                                  
+    lw̃ⱼ_lsu=lw̃ⱼ_lsu.-mean(lw̃ⱼ_lsu); # demean                                                
+    Vlw̃ⱼ_lsu=var(lw̃ⱼ_lsu);
+
+    # *******************************
+    # ****** Moment Conditions ******
+    # *******************************
+
+    ftD = Vlw̃ⱼ_lsu - Vlwⱼ; # error
+    ftt = ftD^2 .* 10.0^6; # square error (multiplied for numerical consistency), equivalent to equation S.64
+    "
+    Observe that ftt (equivalent to equation 35 or S.64), which should be 0, can be read as:
+    E[(1/ε)²⋅log(ω)² - σₗₙ₍w₎²] = 0
+    Thus, we can use this moment condition to identify ε as it is the only unkown in the equation.
+    Notice further that E[(1/ε)²⋅log(ω)²] is the variance of transformed wages 
+    since ω has a mean of 1 and, hence, ln(ω)=0.
+    "
+    return ftt
+end
+
+function get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; su=vec(1:length(Qⱼ)), tol_digits = 6, ε0=4, maxiter=1000)
     
     # *****************************************
     # ******* Computing ajusted wages ω *******
     # *****************************************
 
-    ωⱼ, Ĥₘⱼ = get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ, tol_digits=tol_digits);
+    ωⱼ, Ĥₘⱼ = get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ,tol_digits=tol_digits);    
 
-    # **********************************************************
-    # ******* Computing value of objective function f(ε) *******
-    # **********************************************************    
+    # ************************************************
+    # ******* Defining optimazation parameters *******
+    # ************************************************
 
-    function get_fϵ(ε)
-        
-        # *******************
-        # ****** Wages ******
-        # *******************
-
-        # compute payroll at the block level
-        w̃ⱼ = ωⱼ .^ (1/ε);
-        w̃ⱼ[w̃ⱼ.>0] = w̃ⱼ[w̃ⱼ.>0]./geomean(w̃ⱼ[w̃ⱼ.>0]) # normalizing after the change
-        payroll = w̃ⱼ.* Hₘⱼ 
-        # aggregating payroll to Bezirke level
-        df = DataFrame([payroll block_bzk], :auto)
-        grouped_df = combine(groupby(df, :x2), :x1 => mean => :mean_value, :x1 => length => :count)
-        payroll_bzk = grouped_df.mean_value .* grouped_df.count
-        # aggregating jobs to Bezirke level
-        df = DataFrame([Hₘⱼ block_bzk], :auto)
-        grouped_df = combine(groupby(df, :x2), :x1 => mean => :mean_value, :x1 => length => :count)
-        labor_bzk = grouped_df.mean_value .* grouped_df.count
-        # getting wages at the Bezirke level
-        w̃ⱼbzk = payroll_bzk./labor_bzk
-        lw̃ⱼbzk=log.(w̃ⱼbzk)                                                  
-        lw̃ⱼbzk=lw̃ⱼbzk.-mean(lw̃ⱼbzk)                                                
-        Vlw̃ⱼbzk=var(lw̃ⱼbzk)
-
-        # *******************************
-        # ****** Moment Conditions ******
-        # *******************************
-
-        ftD = Vlw̃ⱼbzk - Vlwⱼ; # error
-        ftt = ftD^2 .* 10.0^6; # square error (multiplied for numerical consistency), equivalent to equation S.64
-        "
-        Observe that ftt (equivalent to equation 35 or S.64), which should be 0, can be read as:
-        E[(1/ε)²⋅log(ω)² - σₗₙ₍w₎²] = 0
-        Thus, we can use this moment condition to identify ε as it is the only unkown in the equation.
-        Notice further that E[(1/ε)²⋅log(ω)²] is the variance of transformed wages 
-        since ω has a mean of 1 and, hence, ln(ω)=0.
-        "
-        return ftt
-    end
+    S = payroll_aggregator(su);
+    p = (S, Hₘⱼ, ωⱼ, Vlwⱼ);
+    u0 = [ε0];
 
     # ***************************
     # ******* Computing ε *******
     # ***************************
-
-    # defining the optimization algorithm. 
-    "
-    We use the BOBYQA algorithm, differently from the original implementation that used the Generalized Pattern Search (GPS) algorithm.
-    "
+    
+    # Define the Problem 
+    # --- OptimizationProblem(function, initial_guess, parameters; lb, ub)
+    prob = OptimizationProblem(get_fϵ, u0, p; lb = [2.0], ub = [24.0]);
+    # Solve the problem 
+    # --- We use the BOBYQA algorithm, differently from the original implementation that used the Generalized Pattern Search (GPS) algorithm.
     println(">>>> Calibrating ε <<<<")
-    opt = Opt(:LN_BOBYQA, 1)
-    lower_bounds!(opt, [2])
-    upper_bounds!(opt, [24])
-    xtol_rel!(opt, 10.0^(-tol_digits))
-    min_objective!(opt, (x,grad) -> get_fϵ(x[1]))  # so that we can ignore the package gradient requirement
-    maxeval!(opt, maxiter)
-    (minf, minx, ret) = optimize(opt, [ε0])
-    num_evals = NLopt.numevals(opt)
+    sol = solve(prob, NLopt.LN_BOBYQA(), reltol = 10.0^(-tol_digits));
     println(
     """
-    objective value       : $minf
-    solution (ε)          : $minx
-    solution status       : $ret
-    # function evaluation : $num_evals
+    objective value       : $(sol.objective)
+    solution (ε)          : $(sol.u[1])
+    solution status       : $(sol.retcode)
+    # function evaluation : $(sol.stats.fevals)
     """
     )
-    return minx[1], Ĥₘⱼ, ωⱼ
-    
+    return sol.u[1], Ĥₘⱼ, ωⱼ
 end
