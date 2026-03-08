@@ -99,8 +99,8 @@ function get_fϵ(u,p)
     payroll_su = w̃ⱼ.* Hₘⱼ;
 
     # aggregating payroll and labor to lsu levels
-    payroll_lsu = A * payroll_su;
-    labor_lsu = A * Hₘⱼ;
+    payroll_lsu = S * payroll_su;
+    labor_lsu = S * Hₘⱼ;
 
     # getting wages at the lsu level
     w̃ⱼ_lsu = payroll_lsu./labor_lsu;
