@@ -12,6 +12,21 @@ It follows a list of what remains to be implemented:
 - [ ] Implement the counterfactual exercises with **exogenous** fundamentals.
 - [ ] Implement the counterfactual exercises with **endogenous** fundamentals
 
+## Notation
+In this replication, I opted for a different approach compared to the one used for the other models. Here, instead of writing the point-wise operations as:
+```julia
+Y = X .* Z .+ K
+```
+I wrote it as:
+```julia
+Y = @. X * Z + K
+```
+That is, I used the macro `@ .` as much as possible. This is very important for the betterment efficiency and memory allocation. When I am defining a new variable, I use the macro after the `=` sign, as in the example above. When changing the values of a pre-defined variable, I use the macro before the whole line, as in:
+```julia
+@. Y = X * Z + K
+```
+where `Y` was previously defined in the code. This is correct way to guarantee maximum benefits.
+
 ## References
 
 Ahlfeldt, G. M. (2024). Toolkit for The Economics of Density: Evidence from the Berlin Wall. https://github.com/Ahlfeldt/ARSW2015-toolkit
