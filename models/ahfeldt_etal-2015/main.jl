@@ -62,14 +62,18 @@ Vlwⱼ = var(lwⱼ); # compute variance of log wages, our empirical moment
 ε, Ĥₘⱼ, ωⱼ = get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ, su=block_bzk); 
 κ = ν/ε; # setting commuting decay to reduced-form estimate
 
+# Defining a sanity check function
+function snty_check(v1,v2; tol=6)
+    df = DataFrame()
+    df[!,"model"] = vec(v1)
+    df[!,"data"] = vec(v2)
+    model = reg(df,@formula(data ~ model));
+    slope = round(coef(model)[2],digits=tol);
+    return slope
+end
+
 # 'validating' estimates
-df = DataFrame()
-df[!,"model"] = vec(Ĥₘⱼ)
-df[!,"data"] = vec(Hₘⱼ)
-reg(df,@formula(data ~ model))
-model = reg(df,@formula(data ~ model));
-slope = round(coef(model)[2],digits=6);
-println("The slope of the model/real workplace population data is: $slope")
+println("The slope of the model/real workplace population data is: $(snty_check(Hₘⱼ,Ĥₘⱼ))")
 
 # ********************************************************************************
 # *** Calibration of exogenous fundamentals (solving the equilibrium for 2006) ***
@@ -98,17 +102,7 @@ block_bzk06 = dset["bzk06"];
 @btime Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
 
 # computing the structural fundamentals of the model SIMULTANEOUSLY
-@btime Ãⱼsim, B̃ᵢsim, w̃ⱼsim, πᵢⱼsim, Tw̃ᵢsim, ϕᵢsim, Lᵢᴰsim, θᵢsim, H̃ₘⱼsim, H̃ᵣᵢsim, CMAsim = cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
-
-# Defining a sanity check function
-function snty_check(v1,v2; tol=6)
-    df = DataFrame()
-    df[!,"model"] = vec(v1)
-    df[!,"data"] = vec(v2)
-    model = reg(df,@formula(data ~ model));
-    slope = round(coef(model)[2],digits=tol);
-    return slope
-end
+Ãⱼsim, B̃ᵢsim, w̃ⱼsim, πᵢⱼsim, Tw̃ᵢsim, ϕᵢsim, Lᵢᴰsim, θᵢsim, H̃ₘⱼsim, H̃ᵣᵢsim, CMAsim = cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
 
 # sanity check that both algorithms derive the same results
 snty_check_list = [
@@ -124,6 +118,10 @@ snty_check_list = [
     snty_check(H̃ᵣᵢ, H̃ᵣᵢsim), 
     snty_check(CMA, CMAsim, tol=5)];
 println("Are the sequential and simultaneous algorithms agreeing? $(sum(snty_check_list)==11)")
+
+# --- In benchmark tests (@btime) comparing the SEQUENTIAL with the SIMULTANEOU approaches, I have found that:
+# ---     1. SEQUENTIAL takes: 51.547 s (2062 allocations: 88.48 GiB)
+# ---     2. SIMULTANEOUS takes: 283.133 s (5407 allocations: 60.73 GiB)
 
 # indirectly 'validating' bilateral commuting probabilities calibration (it should be 1!)
 println("The slope of the model-real workplace population data is: $(snty_check(Hₘⱼ,H̃ₘⱼ))")
