@@ -60,7 +60,8 @@ Vlwⱼ = var(lwⱼ); # compute variance of log wages, our empirical moment
 
 # computing ω and ε using 86 data
 ε, Ĥₘⱼ, ωⱼ = get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ, su=block_bzk); 
-κ = ν/ε; # setting commuting decay to reduced-form estimate
+ε = round(ε, digits=2); # rounded for consistency with replication package
+κ = round(ν/ε,digits=6); # setting commuting decay to reduced-form estimate; rounded for consistency with replication package
 
 # Defining a sanity check function
 function snty_check(v1,v2; tol=6)
@@ -95,14 +96,14 @@ bzk06 = mapping of Blocks to Bezirkes
 area06 = geographical area 
 ----------
 "
-S = Int64(dset["nobs06"]); Qⱼ = dset["floor06"]; Hₘⱼ = dset["empwpl06"] ; Hᵣᵢ = dset["emprsd06"]; τᵢⱼ = dset["tt06"]'; Kᵢ = dset["area06"];
+Qⱼ = dset["floor06"]; Hₘⱼ = dset["empwpl06"] ; Hᵣᵢ = dset["emprsd06"]; τᵢⱼ = dset["tt06"]; Kᵢ = dset["area06"];
 block_bzk06 = dset["bzk06"];
 
 # computing the structural fundamentals of the model SEQUENTIALLY
-@btime Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
+Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, φᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
 
 # computing the structural fundamentals of the model SIMULTANEOUSLY
-Ãⱼsim, B̃ᵢsim, w̃ⱼsim, πᵢⱼsim, Tw̃ᵢsim, ϕᵢsim, Lᵢᴰsim, θᵢsim, H̃ₘⱼsim, H̃ᵣᵢsim, CMAsim = cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
+Ãⱼsim, B̃ᵢsim, w̃ⱼsim, πᵢⱼsim, Tw̃ᵢsim, φᵢsim, Lᵢᴰsim, θᵢsim, H̃ₘⱼsim, H̃ᵣᵢsim, CMAsim = cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
 
 # sanity check that both algorithms derive the same results
 snty_check_list = [
@@ -111,7 +112,7 @@ snty_check_list = [
     snty_check(w̃ⱼ, w̃ⱼsim),
     snty_check(πᵢⱼ, πᵢⱼsim),
     snty_check(Tw̃ᵢ, Tw̃ᵢsim), 
-    snty_check(ϕᵢ, ϕᵢsim), 
+    snty_check(φᵢ, φᵢsim), 
     snty_check(Lᵢᴰ, Lᵢᴰsim), 
     snty_check(θᵢ, θᵢsim), 
     snty_check(H̃ₘⱼ, H̃ₘⱼsim), 
@@ -119,9 +120,14 @@ snty_check_list = [
     snty_check(CMA, CMAsim, tol=5)];
 println("Are the sequential and simultaneous algorithms agreeing? $(sum(snty_check_list)==11)")
 
-# --- In benchmark tests (@btime) comparing the SEQUENTIAL with the SIMULTANEOU approaches, I have found that:
-# ---     1. SEQUENTIAL takes: 51.547 s (2062 allocations: 88.48 GiB)
-# ---     2. SIMULTANEOUS takes: 283.133 s (5407 allocations: 60.73 GiB)
+"--- In benchmark tests (@btime from a cold start) comparing the SEQUENTIAL with the SIMULTANEOUS approaches, I have found that:
+ ---     1. SEQUENTIAL takes: 45.691 s (54603962 allocations: 90.55 GiB)
+ ---     2. SIMULTANEOUS takes: 424.806 s (4393 allocations: 6.49 GiB)
+ --- Since: 
+ ---     1) both algorithms return virtually identical results; and 
+ ---     2) Julia's garbage collects is quite impressive 
+ --- I would highly recommend opting for the SEQUENTIAL approach.
+"
 
 # indirectly 'validating' bilateral commuting probabilities calibration (it should be 1!)
 println("The slope of the model-real workplace population data is: $(snty_check(Hₘⱼ,H̃ₘⱼ))")
@@ -130,7 +136,7 @@ println("The slope of the model-real workplace population data is: $(snty_check(
 mapit("./data/shapefile/Berlin4matlab1.shp",CMA,"Commuter market access", label_legend="", path_to="./figures/cma06.png");
 mapit("./data/shapefile/Berlin4matlab1.shp",Ãⱼ,"Productivity", label_legend="", path_to="./figures/productivity06.png");
 mapit("./data/shapefile/Berlin4matlab1.shp",B̃ᵢ,"Amenities", label_legend="", path_to="./figures/amenities06.png");
-mapit("./data/shapefile/Berlin4matlab1.shp",ϕᵢ,"Density of Development", label_legend="", path_to="./figures/density06.png");
+mapit("./data/shapefile/Berlin4matlab1.shp",φᵢ,"Density of Development", label_legend="", path_to="./figures/density06.png");
 
 # **********************************************************
 # *** Counterfactual exercises w/ exogenous fundamentals *** 

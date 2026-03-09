@@ -6,7 +6,8 @@ function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500, ε = 1
     compute the initial guess of ω without having to compute ε first.
     "
     # initiate main loop and output variables
-    ωⱼ  = zeros(size(Hₘⱼ,1),1); Ĥₘⱼ = zeros(size(Hₘⱼ,1),1);
+    n_places = size(Hₘⱼ,1);
+    ωⱼ  = zeros(n_places,1); Ĥₘⱼ = zeros(n_places,1);
     pos_employment = vec(Hₘⱼ.>0); pos_residence = vec(Hᵣᵢ.>0) ; # identifying places with firms and residents
     x=1; err = 10000; tol = 10.0^(-tol_digits); # defining loop variables
 
@@ -14,27 +15,27 @@ function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500, ε = 1
     τᵢⱼ = τᵢⱼ[findall(pos_residence),findall(pos_employment)] ; 
     πᵢⱼi = zeros(size(τᵢⱼ)) ; 
     Hᵣᵢ = Hᵣᵢ[pos_residence]; 
-    Hₘⱼ = Hₘⱼ[pos_employment];
-    evτᵢⱼ = exp.(ν .* τᵢⱼ); # pre-computing the exponent of the commuting decay for numerical efficiency
+    Hₘⱼ = Hₘⱼ[pos_employment]; n_workplaces = size(Hₘⱼ,1);
+
+    # initiating some more variables for numerical efficiency
+    Ĥₘⱼ0 = zeros(n_workplaces,1); 
+    dᵢⱼε = @. exp(ν * τᵢⱼ); # pre-computing the, by assumption, iceberg commuting cost times ε for numerical efficiency
     
     # initial guess on transformed wages ωⱼ 
     ωⱼ0 = ωⱼ[pos_employment]; 
     w̃ⱼ0 = @. (((1-α)/Qⱼ[pos_employment])^((1-α)/α))*α # initial guess on ADJUSTED wages following Equation (12) which combines first-order condition and zero-profit conditions, after setting Aⱼ = 1.
     @. ωⱼ0 = w̃ⱼ0 ^ ε; # initial guess on TRANSFORMED wages using that ω = w̃^ε.
-    ωⱼ1 = zeros(size(ωⱼ0,1),1);
-
-    # initiate Ĥₘⱼ
-    local Ĥₘⱼ0 ;
+    ωⱼ1 = zeros(n_workplaces,1);
 
     # announcing the function
     println(">>>> Calibrating ω <<<<")
     while (err >= tol) & (x <= x_max)
         # Compute conditional commuting probabilities (equation 4)
-        @. πᵢⱼi = (ωⱼ0' / evτᵢⱼ) / $sum(ωⱼ0' ./ evτᵢⱼ, dims=2) ;
+        @. πᵢⱼi = (ωⱼ0' / dᵢⱼε) / $sum(ωⱼ0' ./ dᵢⱼε, dims=2) ;
         # Compute predicted workplace employment (equation 7 or, more explicitly, equation 26 and S.44)
-        Ĥₘⱼ0 = @. $sum(πᵢⱼi * Hᵣᵢ, dims=1)' ;
+        @. Ĥₘⱼ0 = $sum(πᵢⱼi * Hᵣᵢ, dims=1)' ;
         # Compute Employment Gap and Check Convergence
-        err = round(maximum(abs.(Ĥₘⱼ0 - Hₘⱼ)),digits = tol_digits) ;
+        err = @. $round($maximum(abs(Ĥₘⱼ0 - Hₘⱼ)),digits = tol_digits) ;
         # Update ω guess
         @. ωⱼ1 = ωⱼ0 * (Hₘⱼ / Ĥₘⱼ0) ;
         # Apply damping to improve stability (I will follow ARSW and use a 0.5 damping factor, even if 0.75/0.25 should be safer)
@@ -49,8 +50,8 @@ function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500, ε = 1
         error("Convergence not achieved for adjusted wages (ω)")
     end
     
-    ωⱼ[pos_employment] = ωⱼ0
-    Ĥₘⱼ[pos_employment] = Ĥₘⱼ0
+    @. ωⱼ[pos_employment] = ωⱼ0
+    @. Ĥₘⱼ[pos_employment] = Ĥₘⱼ0
     println(">>>> Wage System Converged <<<<")
 
     return ωⱼ, Ĥₘⱼ

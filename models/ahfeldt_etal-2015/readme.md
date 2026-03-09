@@ -21,11 +21,13 @@ I wrote it as:
 ```julia
 Y = @. X * Z + K
 ```
-That is, I used the macro `@ .` as much as possible. This is very important for the betterment efficiency and memory allocation. When I am defining a new variable, I use the macro after the `=` sign, as in the example above. When changing the values of a pre-defined variable, I use the macro before the whole line, as in:
+That is, I used the `@ .` broadcasting macro as much as possible. This is very important for the betterment efficiency and memory allocation. When I am defining a new variable, I use the macro after the `=` sign, as in the example above. When changing the values of a pre-defined variable, I use the macro before the whole line, as in:
 ```julia
 @. Y = X * Z + K
 ```
-where `Y` was previously defined in the code. This is correct way to guarantee maximum benefits.
+where `Y` was previously defined in the code. This is correct way to guarantee maximum benefits. 
+
+Importantly, the macro tries to broadcast and fuse all operations it contemplates, which may lead to problems such as broadcasting the `mean()` function. To avoid it, I flair these functions with symbol `$` to scape the broadcasting (eg. `$mean()`). 
 
 ## References
 
