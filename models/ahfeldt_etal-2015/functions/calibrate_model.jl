@@ -2,7 +2,8 @@ function cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
     "
     This function assumes that you have predefined the parameters
     ε, κ, α, β, and μ. It then computes the structural fundamentals 
-    of the model given the exogenous fundamentals:
+    of the model given the observed ('real world') equilibrium
+    variables:
         1. Qⱼ = rent prices; 
         2. Hₘⱼ = workplace employment (population);
         3. Hᵣᵢ = residential employment (population);
@@ -11,7 +12,7 @@ function cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
         5. Kᵢ = geographical area (unkown unit).
     The output of this function is the set of structural fundamentals
     of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that 
-    are consistent with the exogenous fundamentals.
+    are consistent with the observed equilibrium.
     --- IGNORE ---
     This function solves for the equilibrium of the model by iterating 
     over wages to assess for the equilibrium productivity. All else is
@@ -120,7 +121,8 @@ function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_ma
     "
     This function assumes that you have predefined the parameters
     ε, κ, α, β, and μ. It then computes the structural fundamentals 
-    of the model given the exogenous fundamentals:
+    of the model given the observed ('real world') equilibrium
+    variables:
         1. Qⱼ = rent prices; 
         2. Hₘⱼ = workplace employment (population);
         3. Hᵣᵢ = residential employment (population);
@@ -129,7 +131,7 @@ function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_ma
         5. Kᵢ = geographical area (unkown unit).
     The output of this function is the set of structural fundamentals
     of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that 
-    are consistent with the exogenous fundamentals.
+    are consistent with the observed equilibrium.
     --- IGNORE ---
     This function solves for the equilibrium of the model by simultaneously
     iterating over guesses of Ãⱼ and B̃ᵢ up until convergence is achieved.
@@ -226,20 +228,42 @@ end
 
 function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=6, iter_max=1000)
     "
-    
+        This function assumes that you have predefined the parameters
+        {α, β, κ, ε, and μ}. It then solves for the general equilibrium 
+        of the model given the structural exogenous fundamentals:
+            1. Ãⱼ = workplace productivity;
+            2. B̃ᵢ = residential amenities;
+            3. φᵢ = density of development;
+            4. Kᵢ = geographical area; and
+            5. τᵢⱼ = bilateral travel time matrix.
+        The output of this function is the set of endogenous equilibrium
+        variables {w̃ⱼ, θᵢ, Qⱼ, πᵢⱼ, H̃} that satisfy labor and land market
+        clearing conditions. The equilibrium is defined in page 18 (2143)
+        of the paper.
+        --- IGNORE ---
+        This function solves for the equilibrium of the model by simultaneously
+        iterating over guesses ofw̃ⱼ, θᵢ and Qⱼ until convergence is achieved, 
+        using a damping factor to ensure stability.
     "
     # unpack parameters
     α, β, κ, ε, μ = params; 
     Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ = exo_fund;
+
+    # positional variables
     pos_employment = vec(Ãⱼ.>0) ; pos_residence = vec(B̃ᵢ.>0);
     idx_emp = findall(pos_employment) ; idx_res = findall(pos_residence);
     n_places = size(Kᵢ,1); n_workplaces = size(idx_emp,1); n_residence = size(idx_res,1);
-
+    pure_emp = @. (Ãⱼ>0) & (B̃ᵢ==0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
+    pure_res = @. (Ãⱼ==0) & (B̃ᵢ>0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
+    shared_space = @. (Ãⱼ>0) & (B̃ᵢ>0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
+    
     # initial guess for the endogenous variables of the model
     if isnothing(prices_guess)
         Qⱼ0 = ones(n_places,1);
         w̃ⱼ0 = ones(n_places,1);
         θᵢ0 = ones(n_places,1);
+        @. θᵢ0[pure_res] = 0; 
+        @. θᵢ0[shared_space] = 0.5; 
     else
         Qⱼ0, w̃ⱼ0, θᵢ0 = prices_guess; 
     end
@@ -264,31 +288,29 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
     println(">>>> Solving for equilibrium <<<<")
     while ((err_Q >= tol) || (err_w >= tol) || (err_θ >= tol)) && (iter <= iter_max)
         # updating endogenous variables by solving the model equations
-        # --- πᵢⱼ and H̃ trough eq. 4
+
+        # --- πᵢⱼ and H̃ trough eq. 4 ---
         @. Φᵢⱼ = (B̃ᵢ[pos_residence] * w̃ⱼ0[pos_employment]')^ε * (dᵢⱼ*Qⱼ0[pos_residence]^(1-β))^(-ε);
         H̃ =  sum(Φᵢⱼ); 
         @. πᵢⱼ[idx_res,idx_emp] = Φᵢⱼ / H̃;
 
-        # --- H̃ₘⱼ and H̃ᵣᵢ through eq. 5
+        # --- H̃ₘⱼ and H̃ᵣᵢ through eq. 5 ---
         @. H̃ₘⱼ = $sum(πᵢⱼ, dims=1)' * H̃ ;
         @. H̃ᵣᵢ = $sum(πᵢⱼ, dims=2) * H̃ ;
         
-        # --- w̃ⱼ trough eq. 10 + eq. 11
+        # --- w̃ⱼ trough eq. 10 + eq. 11 ---
         @. Ỹⱼ = Ãⱼ * H̃ₘⱼ^α * (θᵢ0 * Lᵢ)^(1-α); 
         @. w̃ⱼ1[pos_employment] = α * Ỹⱼ[pos_employment] / H̃ₘⱼ[pos_employment];
 
-        # --- θᵢ through eq. S.49 + S.50 + S.53
+        # --- θᵢ through eq. S.49 + S.50 + S.53 ---
         @. Lₘⱼ[pos_employment] = (w̃ⱼ0[pos_employment] / (α * Ãⱼ[pos_employment])) ^(1/(1-α)) * H̃ₘⱼ[pos_employment];
         term = @. (w̃ⱼ0[pos_employment]' / dᵢⱼ) ^ε;
         @. Lᵣᵢ[pos_residence] = (1-β) * ($sum(term * w̃ⱼ0[pos_employment]',dims=2)/$sum(term,dims=2)) * H̃ᵣᵢ[pos_residence] / Qⱼ0[pos_residence];
-        pure_emp = @. (H̃ₘⱼ>0) & (H̃ᵣᵢ==0); 
-        pure_res = @. (H̃ₘⱼ==0) & (H̃ᵣᵢ>0);
-        shared_space = @. (H̃ₘⱼ>0) & (H̃ᵣᵢ>0);
         @. θᵢ1[pure_emp] = 1;
         @. θᵢ1[pure_res] = 0;
         @. θᵢ1[shared_space] = Lₘⱼ[shared_space] / (Lₘⱼ[shared_space] + Lᵣᵢ[shared_space]);
 
-        # --- Qᵢ thorugh eq. S.20 + eq. 17 + eq. 18 + eq. 14
+        # --- Qᵢ thorugh eq. S.20 + eq. 17 + eq. 18 + eq. 14 ---
         @. Ew̃ᵢ[pos_residence] = $sum(πᵢⱼ[idx_res,idx_emp] / $sum(πᵢⱼ[idx_res,idx_emp], dims=2) * w̃ⱼ0[pos_employment]' , dims=2); 
         @. Qⱼ1[pure_res] = ((1-β) * Ew̃ᵢ[pure_res] * H̃ᵣᵢ[pure_res]) / ((1-θᵢ0[pure_res]) * Lᵢ[pure_res]);
         @. Qⱼ1[pure_emp] = ((1-α) * Ỹⱼ[pure_emp]) / (θᵢ0[pure_emp] * Lᵢ[pure_emp]); 
@@ -300,10 +322,10 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
         err_w = @. $round($maximum(abs(w̃ⱼ1 - w̃ⱼ0)),digits=tol_digits); 
         err_θ = @. $round($maximum(abs(θᵢ1 - θᵢ0)),digits=tol_digits); 
 
-        # revise guesses
-        @. Qⱼ0 = 0.5 * Qⱼ0 + 0.5 * Qⱼ1 ;
-        @. w̃ⱼ0 = 0.5 * w̃ⱼ0 + 0.5 * w̃ⱼ1 ;
-        @. θᵢ0 = 0.5 * θᵢ0 + 0.5 * θᵢ1 ;
+        # revise guesses (safer dumping; otherwise it 'bounces' a lot)
+        @. Qⱼ0 = 0.7 * Qⱼ0 + 0.3 * Qⱼ1 ;
+        @. w̃ⱼ0 = 0.7 * w̃ⱼ0 + 0.3 * w̃ⱼ1 ;
+        @. θᵢ0 = 0.7 * θᵢ0 + 0.3 * θᵢ1 ;
 
         # Print convergence rate
         println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0)])

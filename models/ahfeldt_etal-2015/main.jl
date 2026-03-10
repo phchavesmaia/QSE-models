@@ -35,7 +35,12 @@ Random.seed!(s)
 # ****************************************************************
 # *** Estimating the frechet-shape parameter ε using 1986 data ***
 # ****************************************************************
-
+"
+    This section of the code aims to compute the value of the
+    structural parameter ε. We validade this estimate by 
+    analyzing wheter it would lead to model estimates of 
+    workforce allocation consistent with 'real world' data.
+"
 # read 1986 data
 fileIn = matopen("./data/input/prepdata_big_TD86.mat");
 dset = read(fileIn);
@@ -81,6 +86,12 @@ println("The slope of the model/real workplace population data is: $(snty_check(
 # *********************************************************************
 # *** Calibration of exogenous fundamentals (model inversion, 2006) ***
 # *********************************************************************
+"
+    As explained in the ARSW Codebook, the functions implemented in this section
+    aim to recover the structural fundamentals {Ãᵢ,B̃ᵢ,φᵢ}, which incorporate 
+    {Tᵢ,Eᵢ,Aᵢ,Bᵢ,φᵢ,Kᵢ,ξᵢ}, by inverting the model so that we can use endogenous 
+    variables to recover the structural parameters that rationalize them.
+"
 
 # read 2006 data
 fileIn = matopen("./data/input/prepdata_big_TD.mat");
@@ -144,15 +155,23 @@ mapit("./data/shapefile/Berlin4matlab1.shp",φᵢ,"Density of Development", labe
 # *********************************************************
 # *** Solving 2006 equilibrium (exogenous fundamentals) *** 
 # *********************************************************
-
-# define list of parameters
+"
+    This section of the code will solve the model by inputing
+    the structural parameters and exogenous fundamentals in
+    order to recover the equilibrium endogenous variables.
+    Notably, we must use the {Ãᵢ,B̃ᵢ,φᵢ} estimates recovered
+    in the previous section. 
+"
+# enunciate model parameters
 params = (α, β, κ, ε, μ);
 
-# define list of variables
-exo_fund = (Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ); # exogenous fundamentals of the model
-prices_guess = (Qⱼ, w̃ⱼ, θᵢ); # endogenous variables of the model
+# enunciate exogenous fundamentals of the model
+exo_fund = (Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ); 
 
-# solve the equilibrium
+# enunciate guesses at equilibrium prices
+prices_guess = (Qⱼ, w̃ⱼ, θᵢ); 
+
+# solve the equilibrium using data/model-consistent initial guesses
 w̃ⱼeq, θᵢeq, Qⱼeq, πᵢⱼeq, H̃eq = solve_equilibrium(params, exo_fund, prices_guess = prices_guess);
 
 # validating the equilibrium variables with real data
@@ -165,4 +184,5 @@ snty_check_eq = [
 ];
 println("Does this equilibrium match the data? $(sum(snty_check_eq)==length(snty_check_eq))")
 
-
+# solve the equilibrium blindly (it takes a long time!)
+w̃ⱼeqb, θᵢeqb, Qⱼeqb, πᵢⱼeqb, H̃eqb = solve_equilibrium(params, exo_fund)
