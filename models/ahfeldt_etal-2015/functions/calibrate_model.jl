@@ -8,7 +8,7 @@ function cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
         3. Hᵣᵢ = residential employment (population);
         4. τᵢⱼ = bilateral travel time matrix s.t. rows (i) denote 
             residences and columns (j) denote workplaces; and
-        5. Kᵢ = geographical area.
+        5. Kᵢ = geographical area (unkown unit).
     The output of this function is the set of structural fundamentals
     of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that 
     are consistent with the exogenous fundamentals.
@@ -71,8 +71,8 @@ function cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
     @. B̃ᵢ[pos_residence] = B̃ᵢ[pos_residence] * ($sum(Hₘⱼ) / $sum(Φᵢⱼ))^(1/ε);
     "
     The authors measure utility in a unit measure s.t. (Ū/γ)ᵋ/H = 1, where γ = Γ(ε−1/ε) and Γ(·) is the Gamma function (See supplement p. 17).
-    Thus, it is implied that ϕ = H, as demonstrated in p. 18 of the supplement. Hence, if the population in the data (H) is greater than the 
-    population in the model (ϕ), we increase the amenities to make the city more attractive and attract more residents.
+    Thus, it is implied that Φ = H, as demonstrated in p. 18 of the supplement. Hence, if the population in the data (H) is greater than the 
+    population in the model (Φ), we increase the amenities to make the city more attractive and attract more residents.
     "
 
     # ******************************************************
@@ -85,7 +85,7 @@ function cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
 
     # Predicted residence and workplace employment
     H̃ₘⱼ = @. πₘⱼ * $sum(Hₘⱼ);
-    H̃ᵣᵢ = @. πᵣᵢ * $sum(Hₘⱼ);
+    H̃ᵣᵢ = @. πᵣᵢ * $sum(Hᵣᵢ);
 
     # Compute expected residential work income (eq. S20)
     Ew̃ᵢ = zeros(n_places,1);
@@ -126,7 +126,7 @@ function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_ma
         3. Hᵣᵢ = residential employment (population);
         4. τᵢⱼ = bilateral travel time matrix s.t. rows (i) denote 
             residences and columns (j) denote workplaces; and
-        5. Kᵢ = geographical area.
+        5. Kᵢ = geographical area (unkown unit).
     The output of this function is the set of structural fundamentals
     of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that 
     are consistent with the exogenous fundamentals.
@@ -157,16 +157,16 @@ function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_ma
     
     # initiate the model loop
     println(">>>> Calibrating Ã and B̃ <<<<")
-    while  (err_Ãⱼ >= tol) & (err_B̃ᵢ >= tol) & (iter <= iter_max)
+    while  ((err_Ãⱼ >= tol) || (err_B̃ᵢ >= tol)) && (iter <= iter_max)
         
-        # Guess wages using the first-order condition (equation 12)
+        # Guess wages using the first-order condition (eq. 12)
         @. w̃ⱼ[pos_employment] = (((1-α)/Qⱼ[pos_employment])^((1-α)/α))*α*(Ãⱼ0[pos_employment]^(1/α));
         
         # Compute bilateral commuting probabilities (eq. 4)
         @. Φᵢⱼ = (B̃ᵢ0[pos_residence]*w̃ⱼ[pos_employment]')^ε * (dᵢⱼ*Qⱼ[pos_residence]^(1-β))^(-ε); # total population in the model
         @. πᵢⱼ[idx_res,idx_emp] = Φᵢⱼ / $sum(Φᵢⱼ); # unconditional commuting probabilities
 
-        # Compute predicted residence and workplace employment from definition
+        # Compute predicted residence and workplace employment (eq. 5)
         @. H̃ₘⱼ = $sum(πᵢⱼ, dims=1)' * $sum(Hₘⱼ);
         @. H̃ᵣᵢ = $sum(πᵢⱼ, dims=2) * $sum(Hₘⱼ);
 
@@ -223,3 +223,93 @@ function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_ma
 
     return Ãⱼ0, B̃ᵢ0, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end 
+
+function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=6, iter_max=1000)
+    "
+    
+    "
+    # unpack parameters
+    α, β, κ, ε, μ = params; 
+    Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ = exo_fund;
+    pos_employment = vec(Ãⱼ.>0) ; pos_residence = vec(B̃ᵢ.>0);
+    idx_emp = findall(pos_employment) ; idx_res = findall(pos_residence);
+    n_places = size(Kᵢ,1); n_workplaces = size(idx_emp,1); n_residence = size(idx_res,1);
+
+    # initial guess for the endogenous variables of the model
+    if isnothing(prices_guess)
+        Qⱼ0 = ones(n_places,1);
+        w̃ⱼ0 = ones(n_places,1);
+        θᵢ0 = ones(n_places,1);
+    else
+        Qⱼ0, w̃ⱼ0, θᵢ0 = prices_guess; 
+    end
+
+    # initializing variables to be updated in the loop
+    Qⱼ1 = zeros(n_places,1); w̃ⱼ1 = zeros(n_places,1);
+    θᵢ1 = zeros(n_places,1); H̃ₘⱼ = zeros(n_places,1); 
+    H̃ᵣᵢ = zeros(n_places,1); Ỹⱼ = zeros(n_places,1); 
+    Ew̃ᵢ = zeros(n_places,1); Φᵢⱼ = zeros(n_residence, n_workplaces);
+    Lₘⱼ = zeros(n_places,1); Lᵣᵢ = zeros(n_places,1);
+    H̃ = 1; πᵢⱼ = zeros(n_places, n_places);
+
+    # defining loop variables
+    iter = 0; tol = 10.0^(-tol_digits);
+    err_Q = 10000; err_w = 10000; err_θ = 10000;
+    
+    # other variables 
+    dᵢⱼ = @. exp(κ*τᵢⱼ[idx_res,idx_emp]); # by assumption
+    Lᵢ = @. φᵢ * Kᵢ^(1-μ); # eq. 19
+
+    # initiate the model loop
+    println(">>>> Solving for equilibrium <<<<")
+    while ((err_Q >= tol) || (err_w >= tol) || (err_θ >= tol)) && (iter <= iter_max)
+        # updating endogenous variables by solving the model equations
+        # --- πᵢⱼ and H̃ trough eq. 4
+        @. Φᵢⱼ = (B̃ᵢ[pos_residence] * w̃ⱼ0[pos_employment]')^ε * (dᵢⱼ*Qⱼ0[pos_residence]^(1-β))^(-ε);
+        H̃ =  sum(Φᵢⱼ); 
+        @. πᵢⱼ[idx_res,idx_emp] = Φᵢⱼ / H̃;
+
+        # --- H̃ₘⱼ and H̃ᵣᵢ through eq. 5
+        @. H̃ₘⱼ = $sum(πᵢⱼ, dims=1)' * H̃ ;
+        @. H̃ᵣᵢ = $sum(πᵢⱼ, dims=2) * H̃ ;
+        
+        # --- w̃ⱼ trough eq. 10 + eq. 11
+        @. Ỹⱼ = Ãⱼ * H̃ₘⱼ^α * (θᵢ0 * Lᵢ)^(1-α); 
+        @. w̃ⱼ1[pos_employment] = α * Ỹⱼ[pos_employment] / H̃ₘⱼ[pos_employment];
+
+        # --- θᵢ through eq. S.49 + S.50 + S.53
+        @. Lₘⱼ[pos_employment] = (w̃ⱼ0[pos_employment] / (α * Ãⱼ[pos_employment])) ^(1/(1-α)) * H̃ₘⱼ[pos_employment];
+        term = @. (w̃ⱼ0[pos_employment]' / dᵢⱼ) ^ε;
+        @. Lᵣᵢ[pos_residence] = (1-β) * ($sum(term * w̃ⱼ0[pos_employment]',dims=2)/$sum(term,dims=2)) * H̃ᵣᵢ[pos_residence] / Qⱼ0[pos_residence];
+        pure_emp = @. (H̃ₘⱼ>0) & (H̃ᵣᵢ==0); 
+        pure_res = @. (H̃ₘⱼ==0) & (H̃ᵣᵢ>0);
+        shared_space = @. (H̃ₘⱼ>0) & (H̃ᵣᵢ>0);
+        @. θᵢ1[pure_emp] = 1;
+        @. θᵢ1[pure_res] = 0;
+        @. θᵢ1[shared_space] = Lₘⱼ[shared_space] / (Lₘⱼ[shared_space] + Lᵣᵢ[shared_space]);
+
+        # --- Qᵢ thorugh eq. S.20 + eq. 17 + eq. 18 + eq. 14
+        @. Ew̃ᵢ[pos_residence] = $sum(πᵢⱼ[idx_res,idx_emp] / $sum(πᵢⱼ[idx_res,idx_emp], dims=2) * w̃ⱼ0[pos_employment]' , dims=2); 
+        @. Qⱼ1[pure_res] = ((1-β) * Ew̃ᵢ[pure_res] * H̃ᵣᵢ[pure_res]) / ((1-θᵢ0[pure_res]) * Lᵢ[pure_res]);
+        @. Qⱼ1[pure_emp] = ((1-α) * Ỹⱼ[pure_emp]) / (θᵢ0[pure_emp] * Lᵢ[pure_emp]); 
+        @. Qⱼ1[shared_space] = (((1-α) * Ỹⱼ[shared_space]) + ((1-β) * Ew̃ᵢ[shared_space] * H̃ᵣᵢ[shared_space])) / Lᵢ[shared_space]; # akin to: θ * Qⱼ1[pure_emp] + (1-θ) * Qⱼ1[pure_res]
+        
+        # update error metrics here
+        iter += 1; 
+        err_Q = @. $round($maximum(abs(Qⱼ1 - Qⱼ0)),digits=tol_digits); 
+        err_w = @. $round($maximum(abs(w̃ⱼ1 - w̃ⱼ0)),digits=tol_digits); 
+        err_θ = @. $round($maximum(abs(θᵢ1 - θᵢ0)),digits=tol_digits); 
+
+        # revise guesses
+        @. Qⱼ0 = 0.5 * Qⱼ0 + 0.5 * Qⱼ1 ;
+        @. w̃ⱼ0 = 0.5 * w̃ⱼ0 + 0.5 * w̃ⱼ1 ;
+        @. θᵢ0 = 0.5 * θᵢ0 + 0.5 * θᵢ1 ;
+
+        # Print convergence rate
+        println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0)])
+    end
+    println(">>>> Equilibrium achieved! <<<<")
+
+    # Return the equilibrium endogenous variables 
+    return w̃ⱼ0, θᵢ0, Qⱼ0, πᵢⱼ, H̃
+end

@@ -27,7 +27,10 @@ That is, I used the `@ .` broadcasting macro as much as possible. This is very i
 ```
 where `Y` was previously defined in the code. This is correct way to guarantee maximum benefits. 
 
-Importantly, the macro tries to broadcast and fuse all operations it contemplates, which may lead to problems such as broadcasting the `mean()` function. To avoid it, I flair these functions with symbol `$` to scape the broadcasting (eg. `$mean()`). 
+Importantly, the macro tries to broadcast and fuse all operations it contemplates, which may lead to problems such as broadcasting the `mean()` function. To avoid it, I flair these functions with symbol `$` to scape the broadcasting, as in the following example:
+```julia
+@. Y = X * Z + $mean(K)
+``` 
 
 ## References
 

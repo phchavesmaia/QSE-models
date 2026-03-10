@@ -53,6 +53,8 @@ bzk86rw = mapping of Blocks to Bezirkes
 "
 S = Int64(dset["nobs86rw"]); Qⱼ = dset["floor86rw"]; Hₘⱼ = dset["empwpl86rw"] ; Hᵣᵢ = dset["emprsd86rw"]; τᵢⱼ = dset["tt86rw"]'; # using the paper notation
 block_bzk = dset["bzk86rw"]; # map from blocks to districts 
+dset = nothing; GC.gc() # free memory
+
 bzkwge = CSV.read("./data/input/wageworker1986.csv", DataFrame; header = false); # Bezirke (district) raw wage data
 lwⱼ = log.(bzkwge.Column2); # taking log
 lwⱼ = lwⱼ .- mean(lwⱼ); # demean wages
@@ -76,9 +78,9 @@ end
 # 'validating' estimates
 println("The slope of the model/real workplace population data is: $(snty_check(Hₘⱼ,Ĥₘⱼ))")
 
-# ********************************************************************************
-# *** Calibration of exogenous fundamentals (solving the equilibrium for 2006) ***
-# ********************************************************************************
+# *********************************************************************
+# *** Calibration of exogenous fundamentals (model inversion, 2006) ***
+# *********************************************************************
 
 # read 2006 data
 fileIn = matopen("./data/input/prepdata_big_TD.mat");
@@ -97,28 +99,29 @@ area06 = geographical area
 ----------
 "
 Qⱼ = dset["floor06"]; Hₘⱼ = dset["empwpl06"] ; Hᵣᵢ = dset["emprsd06"]; τᵢⱼ = dset["tt06"]; Kᵢ = dset["area06"];
-block_bzk06 = dset["bzk06"];
+block_bzk06 = dset["bzk06"]; 
+dset = nothing; GC.gc() # free memory
 
 # computing the structural fundamentals of the model SEQUENTIALLY
-Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, φᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
+Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, φᵢ, Lᵢ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
 
 # computing the structural fundamentals of the model SIMULTANEOUSLY
-Ãⱼsim, B̃ᵢsim, w̃ⱼsim, πᵢⱼsim, Tw̃ᵢsim, φᵢsim, Lᵢᴰsim, θᵢsim, H̃ₘⱼsim, H̃ᵣᵢsim, CMAsim = cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
+Ãⱼsim, B̃ᵢsim, w̃ⱼsim, πᵢⱼsim, Tw̃ᵢsim, φᵢsim, Lᵢsim, θᵢsim, H̃ₘⱼsim, H̃ᵣᵢsim, CMAsim = cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
 
 # sanity check that both algorithms derive the same results
-snty_check_list = [
+snty_check_algo = [
     snty_check(Ãⱼ, Ãⱼsim), 
     snty_check(B̃ᵢ, B̃ᵢsim),
     snty_check(w̃ⱼ, w̃ⱼsim),
     snty_check(πᵢⱼ, πᵢⱼsim),
     snty_check(Tw̃ᵢ, Tw̃ᵢsim), 
     snty_check(φᵢ, φᵢsim), 
-    snty_check(Lᵢᴰ, Lᵢᴰsim), 
+    snty_check(Lᵢ, Lᵢsim), 
     snty_check(θᵢ, θᵢsim), 
     snty_check(H̃ₘⱼ, H̃ₘⱼsim), 
     snty_check(H̃ᵣᵢ, H̃ᵣᵢsim), 
     snty_check(CMA, CMAsim, tol=5)];
-println("Are the sequential and simultaneous algorithms agreeing? $(sum(snty_check_list)==11)")
+println("Are the sequential and simultaneous algorithms agreeing? $(sum(snty_check_algo)==length(snty_check_algo))")
 
 "--- In benchmark tests (@btime from a cold start) comparing the SEQUENTIAL with the SIMULTANEOUS approaches, I have found that:
  ---     1. SEQUENTIAL takes: 45.691 s (54603962 allocations: 90.55 GiB)
@@ -138,7 +141,28 @@ mapit("./data/shapefile/Berlin4matlab1.shp",Ãⱼ,"Productivity", label_legend=
 mapit("./data/shapefile/Berlin4matlab1.shp",B̃ᵢ,"Amenities", label_legend="", path_to="./figures/amenities06.png");
 mapit("./data/shapefile/Berlin4matlab1.shp",φᵢ,"Density of Development", label_legend="", path_to="./figures/density06.png");
 
-# **********************************************************
-# *** Counterfactual exercises w/ exogenous fundamentals *** 
-# **********************************************************
+# *********************************************************
+# *** Solving 2006 equilibrium (exogenous fundamentals) *** 
+# *********************************************************
+
+# define list of parameters
+params = (α, β, κ, ε, μ);
+
+# define list of variables
+exo_fund = (Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ); # exogenous fundamentals of the model
+prices_guess = (Qⱼ, w̃ⱼ, θᵢ); # endogenous variables of the model
+
+# solve the equilibrium
+w̃ⱼeq, θᵢeq, Qⱼeq, πᵢⱼeq, H̃eq = solve_equilibrium(params, exo_fund, prices_guess = prices_guess);
+
+# validating the equilibrium variables with real data
+snty_check_eq = [
+    snty_check(w̃ⱼeq,w̃ⱼ),
+    snty_check(θᵢeq,θᵢ),
+    snty_check(Qⱼeq,Qⱼ),
+    snty_check(πᵢⱼeq,πᵢⱼ),
+    Int(round(H̃eq,digits=0) == round(sum(Hₘⱼ),digits=0))
+];
+println("Does this equilibrium match the data? $(sum(snty_check_eq)==length(snty_check_eq))")
+
 

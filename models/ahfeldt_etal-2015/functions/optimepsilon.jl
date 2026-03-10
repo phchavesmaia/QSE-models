@@ -29,7 +29,7 @@ function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500, ε = 1
 
     # announcing the function
     println(">>>> Calibrating ω <<<<")
-    while (err >= tol) & (x <= x_max)
+    while (err >= tol) && (x <= x_max)
         # Compute conditional commuting probabilities (equation 4)
         @. πᵢⱼi = (ωⱼ0' / dᵢⱼε) / $sum(ωⱼ0' ./ dᵢⱼε, dims=2) ;
         # Compute predicted workplace employment (equation 7 or, more explicitly, equation 26 and S.44)
