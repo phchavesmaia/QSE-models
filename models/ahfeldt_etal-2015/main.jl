@@ -186,3 +186,5 @@ println("Does this equilibrium match the data? $(sum(snty_check_eq)==length(snty
 
 # solve the equilibrium blindly (it takes a long time!)
 w̃ⱼeqb, θᵢeqb, Qⱼeqb, πᵢⱼeqb, H̃eqb = solve_equilibrium(params, exo_fund)
+
+

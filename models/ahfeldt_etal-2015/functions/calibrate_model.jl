@@ -113,7 +113,10 @@ function cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
 
     # Density of development (equation 19/S31)
     ϕᵢ = @. Lᵢᴰ/(Kᵢ^(1-μ));
-
+    
+    # Garbage collector
+    GC.gc()
+    
     return Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end
 
@@ -223,6 +226,9 @@ function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_ma
     # Compute commercial floor space share θᵢ (definition) 
     θᵢ = @. Lᵢᴹ / Lᵢᴰ;
 
+    # Garbage collector
+    GC.gc()
+
     return Ãⱼ0, B̃ᵢ0, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end 
 
@@ -242,7 +248,7 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
         of the paper.
         --- IGNORE ---
         This function solves for the equilibrium of the model by simultaneously
-        iterating over guesses ofw̃ⱼ, θᵢ and Qⱼ until convergence is achieved, 
+        iterating over guesses of w̃ⱼ, θᵢ and Qⱼ until convergence is achieved, 
         using a damping factor to ensure stability.
     "
     # unpack parameters
@@ -265,7 +271,7 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
         @. θᵢ0[pure_res] = 0; 
         @. θᵢ0[shared_space] = 0.5; 
     else
-        Qⱼ0, w̃ⱼ0, θᵢ0 = prices_guess; 
+        Qⱼ0, w̃ⱼ0, θᵢ0 = deepcopy(prices_guess); 
     end
 
     # initializing variables to be updated in the loop
@@ -322,7 +328,7 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
         err_w = @. $round($maximum(abs(w̃ⱼ1 - w̃ⱼ0)),digits=tol_digits); 
         err_θ = @. $round($maximum(abs(θᵢ1 - θᵢ0)),digits=tol_digits); 
 
-        # revise guesses (safer dumping; otherwise it 'bounces' a lot)
+        # revise guesses (safer damping; otherwise it 'bounces' a lot)
         @. Qⱼ0 = 0.7 * Qⱼ0 + 0.3 * Qⱼ1 ;
         @. w̃ⱼ0 = 0.7 * w̃ⱼ0 + 0.3 * w̃ⱼ1 ;
         @. θᵢ0 = 0.7 * θᵢ0 + 0.3 * θᵢ1 ;
@@ -330,7 +336,16 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
         # Print convergence rate
         println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0)])
     end
-    println(">>>> Equilibrium achieved! <<<<")
+
+    # Print status
+    if iter < iter_max
+        println(">>>> Equilibrium achieved! <<<<")
+    else
+        println(">>>> Failed to find an equilibrium <<<<")
+    end
+
+    # Garbage collector
+    GC.gc()
 
     # Return the equilibrium endogenous variables 
     return w̃ⱼ0, θᵢ0, Qⱼ0, πᵢⱼ, H̃
