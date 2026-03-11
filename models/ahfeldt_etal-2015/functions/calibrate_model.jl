@@ -115,7 +115,7 @@ function cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
     ϕᵢ = @. Lᵢᴰ/(Kᵢ^(1-μ));
     
     # Garbage collector
-    GC.gc()
+    GC.gc(true)
     
     return Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end
@@ -186,7 +186,7 @@ function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_ma
             @. B̃ᵢ1[pos_residence] = 0.95 + (1.05-0.95) * rand($length(B̃ᵢ1[pos_residence]));
         end
         
-        # Damping the updates to improve stability (I will follow ARSW and use a 0.5 damping factor, even if 0.75/0.25 should be safer)
+        # Damping the updates to improve stability (I will follow ARSW toolkit and use a 0.5 damping factor, even if 0.75/0.25 should be safer)
         @. Ãⱼ0 = 0.5 * Ãⱼ0 + 0.5 * Ãⱼ1 ;
         @. B̃ᵢ0 = 0.5 * B̃ᵢ0 + 0.5 * B̃ᵢ1 ;
 
@@ -227,12 +227,12 @@ function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_ma
     θᵢ = @. Lᵢᴹ / Lᵢᴰ;
 
     # Garbage collector
-    GC.gc()
+    GC.gc(true)
 
     return Ãⱼ0, B̃ᵢ0, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end 
 
-function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=6, iter_max=1000)
+function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=3, iter_max=1000, damp_fact = 0.4)
     "
         This function assumes that you have predefined the parameters
         {α, β, κ, ε, and μ}. It then solves for the general equilibrium 
@@ -247,9 +247,13 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
         clearing conditions. The equilibrium is defined in page 18 (2143)
         of the paper.
         --- IGNORE ---
-        This function solves for the equilibrium of the model by simultaneously
-        iterating over guesses of w̃ⱼ, θᵢ and Qⱼ until convergence is achieved, 
-        using a damping factor to ensure stability.
+        1.  This function solves for the equilibrium of the model by simultaneously
+            iterating over guesses of w̃ⱼ, θᵢ and Qⱼ until convergence is achieved, 
+            using a damping factor to ensure stability.
+        2.  In the ARSW tookit, the tolerance is implicitly of 2 digits. I will be 
+            a little stricter and impose a 3-digit tolerance to leverage on Julia's
+            higher computational efficiency. This is different from the rest of the
+            functions which have a 6-digit tolerance as standard.
     "
     # unpack parameters
     α, β, κ, ε, μ = params; 
@@ -329,9 +333,9 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
         err_θ = @. $round($maximum(abs(θᵢ1 - θᵢ0)),digits=tol_digits); 
 
         # revise guesses (safer damping; otherwise it 'bounces' a lot)
-        @. Qⱼ0 = 0.7 * Qⱼ0 + 0.3 * Qⱼ1 ;
-        @. w̃ⱼ0 = 0.7 * w̃ⱼ0 + 0.3 * w̃ⱼ1 ;
-        @. θᵢ0 = 0.7 * θᵢ0 + 0.3 * θᵢ1 ;
+        @. Qⱼ0 = (1-damp_fact) * Qⱼ0 + damp_fact * Qⱼ1 ;
+        @. w̃ⱼ0 = (1-damp_fact) * w̃ⱼ0 + damp_fact * w̃ⱼ1 ;
+        @. θᵢ0 = (1-damp_fact) * θᵢ0 + damp_fact * θᵢ1 ;
 
         # Print convergence rate
         println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0)])
@@ -345,7 +349,7 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
     end
 
     # Garbage collector
-    GC.gc()
+    GC.gc(true)
 
     # Return the equilibrium endogenous variables 
     return w̃ⱼ0, θᵢ0, Qⱼ0, πᵢⱼ, H̃

@@ -1,7 +1,10 @@
 # *********************
 # **** Load Files  **** 
 # *********************
-using  Plots, LaTeXStrings, FixedEffectModels, GeoStats, GeoIO, CSV, DataFrames, Statistics, LinearAlgebra, MAT, Random, StatsBase, Optimization, OptimizationNLopt, BenchmarkTools, SparseArrays
+using  Plots, LaTeXStrings, FixedEffectModels, GeoStats, GeoIO, CSV, 
+        DataFrames, Statistics, LinearAlgebra, MAT, Random, StatsBase, 
+        Optimization, OptimizationNLopt, BenchmarkTools, SparseArrays,
+        SpecialFunctions
 import CairoMakie as Mke
 
 function load_dir(dir::String)
@@ -86,6 +89,9 @@ println("The slope of the model/real workplace population data is: $(snty_check(
 # *********************************************************************
 # *** Calibration of exogenous fundamentals (model inversion, 2006) ***
 # *********************************************************************
+
+GC.gc() # garbage collector
+
 "
     As explained in the ARSW Codebook, the functions implemented in this section
     aim to recover the structural fundamentals {Ãᵢ,B̃ᵢ,φᵢ}, which incorporate 
@@ -155,6 +161,9 @@ mapit("./data/shapefile/Berlin4matlab1.shp",φᵢ,"Density of Development", labe
 # *********************************************************
 # *** Solving 2006 equilibrium (exogenous fundamentals) *** 
 # *********************************************************
+
+GC.gc() # garbage collector
+
 "
     This section of the code will solve the model by inputing
     the structural parameters and exogenous fundamentals in
@@ -172,19 +181,48 @@ exo_fund = (Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ);
 prices_guess = (Qⱼ, w̃ⱼ, θᵢ); 
 
 # solve the equilibrium using data/model-consistent initial guesses
-w̃ⱼeq, θᵢeq, Qⱼeq, πᵢⱼeq, H̃eq = solve_equilibrium(params, exo_fund, prices_guess = prices_guess);
+w̃ⱼeq, θᵢeq, Qⱼeq, πᵢⱼeq, H̃eq = solve_equilibrium(params, exo_fund, prices_guess = prices_guess, damp_fact = 0.5);
 
 # validating the equilibrium variables with real data
 snty_check_eq = [
-    snty_check(w̃ⱼeq,w̃ⱼ),
-    snty_check(θᵢeq,θᵢ),
-    snty_check(Qⱼeq,Qⱼ),
-    snty_check(πᵢⱼeq,πᵢⱼ),
-    Int(round(H̃eq,digits=0) == round(sum(Hₘⱼ),digits=0))
-];
+    snty_check(w̃ⱼeq,w̃ⱼ,tol=3),
+    snty_check(θᵢeq,θᵢ,tol=3),
+    snty_check(Qⱼeq,Qⱼ,tol=3),
+    snty_check(πᵢⱼeq,πᵢⱼ,tol=3),
+    Int(round(H̃eq,digits=0) == round(sum(Hₘⱼ),digits=3))];
 println("Does this equilibrium match the data? $(sum(snty_check_eq)==length(snty_check_eq))")
 
 # solve the equilibrium blindly (it takes a long time!)
-w̃ⱼeqb, θᵢeqb, Qⱼeqb, πᵢⱼeqb, H̃eqb = solve_equilibrium(params, exo_fund)
+w̃ⱼeqb, θᵢeqb, Qⱼeqb, πᵢⱼeqb, H̃eqb = solve_equilibrium(params, exo_fund);
 
+# validaring if initial guesses lead to different results...
+snty_check_guess = [
+    snty_check(w̃ⱼeq,w̃ⱼeqb,tol=3),
+    snty_check(θᵢeq,θᵢeqb,tol=3),
+    snty_check(Qⱼeq,Qⱼeqb,tol=3),
+    snty_check(πᵢⱼeq,πᵢⱼeqb,tol=3),
+    Int(round(H̃eq,digits=0) == round(H̃eqb,digits=3))];
+println("Are the results robust to different initial guesses (is the eq. perfectly identified)? $(sum(snty_check_eq)==length(snty_check_eq))")
 
+# *****************************************************************
+# *** Counterfactuals 2006 equilibrium (exogenous fundamentals) *** 
+# *****************************************************************
+
+GC.gc() # garbage collector
+
+# --- What happens if we ban cars in the entire city? --- 
+fileIn = matopen("./data/input/ttpublic_2006_ren.mat");
+dset = read(fileIn);
+close(fileIn);
+τᵢⱼpub = dset["ttpub06"]; # read counterfactual bilateral travel time matrix
+
+# enunciate altered exogenous fundamentals of the model
+exo_fund_ctf = (Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼpub); 
+
+# estimate alternative equilibrium
+w̃ⱼpub, θᵢpub, Qⱼpub, πᵢⱼpub, H̃pub = solve_equilibrium(params, exo_fund_ctf, prices_guess = prices_guess);
+
+# welfare analysis (eq. 9)
+Ūeq = gamma((ε-1)/ε) * (H̃eq^(1/ε)); 
+Ūpub = gamma((ε-1)/ε) * (H̃pub^(1/ε)); 
+println("The welfare change from banning cars would be of: $(round(100*(Ūpub-Ūeq)/Ūeq,digits=2))%")

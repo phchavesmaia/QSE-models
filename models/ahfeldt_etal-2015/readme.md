@@ -11,7 +11,7 @@ It follows a list of what remains to be implemented:
     - [X] Both algorithms return identical results.
 - [ ] Implement the counterfactual exercises with **exogenous** fundamentals.
     - [X] Solve model for exogenous fundamentals;
-    - [ ] Implement counterfactuals.
+    - [ ] Implement counterfactuals (**the results are not matching to the toolkit!**).
 - [ ] Implement the counterfactual exercises with **endogenous** fundamentals
     - [ ] Solve model for endogenous fundamentals;
     - [ ] Implement counterfactuals.
