@@ -1,7 +1,7 @@
 # *********************
 # **** Load Files  **** 
 # *********************
-using  Plots, LaTeXStrings, FixedEffectModels, GeoStats, GeoIO, CSV, 
+using  LaTeXStrings, FixedEffectModels, GeoStats, GeoIO, CSV, 
         DataFrames, Statistics, LinearAlgebra, MAT, Random, StatsBase, 
         Optimization, OptimizationNLopt, BenchmarkTools, SparseArrays,
         SpecialFunctions
@@ -180,20 +180,23 @@ exo_fund = (Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ);
 # enunciate guesses at equilibrium prices
 prices_guess = (Qⱼ, w̃ⱼ, θᵢ); 
 
-# solve the equilibrium using data/model-consistent initial guesses
-w̃ⱼeq, θᵢeq, Qⱼeq, πᵢⱼeq, H̃eq = solve_equilibrium(params, exo_fund, prices_guess = prices_guess, damp_fact = 0.5);
+# solve the CLOSED-CITY equilibrium using data/model-consistent initial guesses
+H = sum(Hᵣᵢ);
+w̃ⱼeq, θᵢeq, Qⱼeq, πᵢⱼeq, Ūeq = solve_equilibrium(params, exo_fund, H ,prices_guess = prices_guess, damp_fact = 0.5);
+
+# solve THE OPEN-CITY equilibrium using data/model-consistent initial guesses
+w̃ⱼeq, θᵢeq, Qⱼeq, πᵢⱼeq, H̃eq = solve_equilibrium(params, exo_fund, Ūeq , closed_city = false, prices_guess = prices_guess, damp_fact = 0.5);
 
 # validating the equilibrium variables with real data
 snty_check_eq = [
     snty_check(w̃ⱼeq,w̃ⱼ,tol=3),
     snty_check(θᵢeq,θᵢ,tol=3),
     snty_check(Qⱼeq,Qⱼ,tol=3),
-    snty_check(πᵢⱼeq,πᵢⱼ,tol=3),
-    Int(round(H̃eq,digits=0) == round(sum(Hₘⱼ),digits=3))];
+    snty_check(πᵢⱼeq,πᵢⱼ,tol=3)];
 println("Does this equilibrium match the data? $(sum(snty_check_eq)==length(snty_check_eq))")
 
 # solve the equilibrium blindly (it takes a long time!)
-w̃ⱼeqb, θᵢeqb, Qⱼeqb, πᵢⱼeqb, H̃eqb = solve_equilibrium(params, exo_fund);
+w̃ⱼeqb, θᵢeqb, Qⱼeqb, πᵢⱼeqb, Ūeqb = solve_equilibrium(params, exo_fund, damp_fact = 0.5);
 
 # validaring if initial guesses lead to different results...
 snty_check_guess = [
@@ -210,7 +213,7 @@ println("Are the results robust to different initial guesses (is the eq. perfect
 
 GC.gc() # garbage collector
 
-# --- What happens if we ban cars in the entire city? --- 
+# --- What happens if we ban cars in the entire city? --- #
 fileIn = matopen("./data/input/ttpublic_2006_ren.mat");
 dset = read(fileIn);
 close(fileIn);
@@ -219,10 +222,39 @@ close(fileIn);
 # enunciate altered exogenous fundamentals of the model
 exo_fund_ctf = (Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼpub); 
 
-# estimate alternative equilibrium
-w̃ⱼpub, θᵢpub, Qⱼpub, πᵢⱼpub, H̃pub = solve_equilibrium(params, exo_fund_ctf, prices_guess = prices_guess);
+# estimate alternative CLOSED-CITY equilibrium
+w̃ⱼpub, θᵢpub, Qⱼpub, πᵢⱼpub, Ūpub = solve_equilibrium(params, exo_fund_ctf, H, prices_guess = prices_guess);
 
 # welfare analysis (eq. 9)
-Ūeq = gamma((ε-1)/ε) * (H̃eq^(1/ε)); 
-Ūpub = gamma((ε-1)/ε) * (H̃pub^(1/ε)); 
 println("The welfare change from banning cars would be of: $(round(100*(Ūpub-Ūeq)/Ūeq,digits=2))%")
+
+# *************
+# *** debug ***
+# *************
+
+# using matlab produced data to check if the difference is in my function!
+fileIn = matopen("C:/Users/pedro.maia/Downloads/ARSW2015-toolkit-main/ARSW2015-toolkit-main/matlab/data/output/exogcftual_prep_big_TD.mat");
+dset = read(fileIn);
+fund = dset["fund"];
+A=fund[:,1]; B=fund[:,2]; V=fund[:,3]; K=fund[:,4];
+QT=fund[:,5]; HMT=fund[:,6]; HRT=fund[:,7];
+LM=fund[:,8]; LR=fund[:,9]; LD=fund[:,10];
+wage=fund[:,11]; vv=fund[:,12]; theta = dset["theta06"];
+
+snty_check_algo = [
+    snty_check(Ãⱼ, A), 
+    snty_check(B̃ᵢ, B),
+    snty_check(w̃ⱼ, wage),
+    snty_check(Tw̃ᵢ, vv), 
+    snty_check(Lᵢ, LD), 
+    snty_check(θᵢ, theta), 
+    snty_check(H̃ₘⱼ, HMT), 
+    snty_check(H̃ᵣᵢ, HRT)];
+
+exo_fund_ctf = (A, B, φᵢ, K, τᵢⱼpub);
+prices_guess = (QT,wage,LM./LD);
+
+w̃ⱼmat, θᵢmat, Qⱼmat, πᵢⱼmat, H̃mat = solve_equilibrium(params, exo_fund_ctf, prices_guess = prices_guess);
+Ūmat = γ * (H̃mat^(1/ε)); 
+println("The welfare change from banning cars would be of: $(round(100*(Ūmat-Ūeq)/Ūeq,digits=2))%")
+

@@ -232,7 +232,7 @@ function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_ma
     return Ãⱼ0, B̃ᵢ0, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end 
 
-function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=3, iter_max=1000, damp_fact = 0.4)
+function solve_equilibrium(params, exo_fund, pop_uti; prices_guess = nothing, tol_digits=3, iter_max=1000, damp_fact = 0.4, closed_city=true)
     "
         This function assumes that you have predefined the parameters
         {α, β, κ, ε, and μ}. It then solves for the general equilibrium 
@@ -256,8 +256,17 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
             functions which have a 6-digit tolerance as standard.
     "
     # unpack parameters
-    α, β, κ, ε, μ = params; 
+    α, β, κ, ε, μ = params; γ = gamma((ε-1)/ε);
     Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ = exo_fund;
+
+    # separate last argument between the open- and closed-city cases
+    if closed_city
+        H̃ = pop_uti;
+        Ū = 1;
+    else 
+        Ū = pop_uti;
+        H̃ = 1;
+    end 
 
     # positional variables
     pos_employment = vec(Ãⱼ.>0) ; pos_residence = vec(B̃ᵢ.>0);
@@ -283,9 +292,12 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
     θᵢ1 = zeros(n_places,1); H̃ₘⱼ = zeros(n_places,1); 
     H̃ᵣᵢ = zeros(n_places,1); Ỹⱼ = zeros(n_places,1); 
     Ew̃ᵢ = zeros(n_places,1); Φᵢⱼ = zeros(n_residence, n_workplaces);
-    Lₘⱼ = zeros(n_places,1); Lᵣᵢ = zeros(n_places,1);
-    H̃ = 1; πᵢⱼ = zeros(n_places, n_places);
+    Lₘⱼ = zeros(n_places,1); πᵢⱼ = zeros(n_places, n_places);
 
+    # completely specialized blocks never change since amenity or productivity are zero  
+    @. θᵢ1[pure_emp] = 1;
+    @. θᵢ1[pure_res] = 0;
+    
     # defining loop variables
     iter = 0; tol = 10.0^(-tol_digits);
     err_Q = 10000; err_w = 10000; err_θ = 10000;
@@ -295,52 +307,98 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
     Lᵢ = @. φᵢ * Kᵢ^(1-μ); # eq. 19
 
     # initiate the model loop
-    println(">>>> Solving for equilibrium <<<<")
-    while ((err_Q >= tol) || (err_w >= tol) || (err_θ >= tol)) && (iter <= iter_max)
-        # updating endogenous variables by solving the model equations
+    if closed_city
+        println(">>>> Solving the closed-city equilibrium <<<<")
+        while ((err_Q >= tol) || (err_w >= tol) || (err_θ >= tol)) && (iter <= iter_max)
+            # updating endogenous variables by solving the model equations
 
-        # --- πᵢⱼ and H̃ trough eq. 4 ---
-        @. Φᵢⱼ = (B̃ᵢ[pos_residence] * w̃ⱼ0[pos_employment]')^ε * (dᵢⱼ*Qⱼ0[pos_residence]^(1-β))^(-ε);
-        H̃ =  sum(Φᵢⱼ); 
-        @. πᵢⱼ[idx_res,idx_emp] = Φᵢⱼ / H̃;
+            # --- πᵢⱼ through eq. 4 ---
+            @. Φᵢⱼ = (B̃ᵢ[pos_residence] * w̃ⱼ0[pos_employment]')^ε * (dᵢⱼ*Qⱼ0[pos_residence]^(1-β))^(-ε);
+            Φ =  sum(Φᵢⱼ); 
+            @. πᵢⱼ[idx_res,idx_emp] = Φᵢⱼ / Φ;
+            
+            # --- Ū through eq. 9 ---
+            Ū = γ * Φ ^ (1/ε);
 
-        # --- H̃ₘⱼ and H̃ᵣᵢ through eq. 5 ---
-        @. H̃ₘⱼ = $sum(πᵢⱼ, dims=1)' * H̃ ;
-        @. H̃ᵣᵢ = $sum(πᵢⱼ, dims=2) * H̃ ;
-        
-        # --- w̃ⱼ trough eq. 10 + eq. 11 ---
-        @. Ỹⱼ = Ãⱼ * H̃ₘⱼ^α * (θᵢ0 * Lᵢ)^(1-α); 
-        @. w̃ⱼ1[pos_employment] = α * Ỹⱼ[pos_employment] / H̃ₘⱼ[pos_employment];
+            # --- H̃ₘⱼ and H̃ᵣᵢ through eq. 5 ---
+            @. H̃ₘⱼ = $sum(πᵢⱼ, dims=1)' * H̃ ;
+            @. H̃ᵣᵢ = $sum(πᵢⱼ, dims=2) * H̃ ;
+            
+            # --- w̃ⱼ through eq. 10 + eq. 11 ---
+            @. Ỹⱼ = Ãⱼ * H̃ₘⱼ^α * (θᵢ0 * Lᵢ)^(1-α); 
+            @. w̃ⱼ1[pos_employment] = α * Ỹⱼ[pos_employment] / H̃ₘⱼ[pos_employment];
 
-        # --- θᵢ through eq. S.49 + S.50 + S.53 ---
-        @. Lₘⱼ[pos_employment] = (w̃ⱼ0[pos_employment] / (α * Ãⱼ[pos_employment])) ^(1/(1-α)) * H̃ₘⱼ[pos_employment];
-        term = @. (w̃ⱼ0[pos_employment]' / dᵢⱼ) ^ε;
-        @. Lᵣᵢ[pos_residence] = (1-β) * ($sum(term * w̃ⱼ0[pos_employment]',dims=2)/$sum(term,dims=2)) * H̃ᵣᵢ[pos_residence] / Qⱼ0[pos_residence];
-        @. θᵢ1[pure_emp] = 1;
-        @. θᵢ1[pure_res] = 0;
-        @. θᵢ1[shared_space] = Lₘⱼ[shared_space] / (Lₘⱼ[shared_space] + Lᵣᵢ[shared_space]);
+            # --- Qᵢ thorugh eq. S.20 + eq. 17 + eq. 18 + eq. 14 ---
+            @. Ew̃ᵢ[pos_residence] = $sum(πᵢⱼ[idx_res,idx_emp] / $sum(πᵢⱼ[idx_res,idx_emp], dims=2) * w̃ⱼ0[pos_employment]' , dims=2); 
+            @. Qⱼ1[pure_res] = ((1-β) * Ew̃ᵢ[pure_res] * H̃ᵣᵢ[pure_res]) / ((1-θᵢ0[pure_res]) * Lᵢ[pure_res]);
+            @. Qⱼ1[pure_emp] = ((1-α) * Ỹⱼ[pure_emp]) / (θᵢ0[pure_emp] * Lᵢ[pure_emp]); # you could maybe use S.24 here?!
+            @. Qⱼ1[shared_space] = (((1-α) * Ỹⱼ[shared_space]) + ((1-β) * Ew̃ᵢ[shared_space] * H̃ᵣᵢ[shared_space])) / Lᵢ[shared_space]; # akin to: θ * Qⱼ1[pure_emp] + (1-θ) * Qⱼ1[pure_res]
 
-        # --- Qᵢ thorugh eq. S.20 + eq. 17 + eq. 18 + eq. 14 ---
-        @. Ew̃ᵢ[pos_residence] = $sum(πᵢⱼ[idx_res,idx_emp] / $sum(πᵢⱼ[idx_res,idx_emp], dims=2) * w̃ⱼ0[pos_employment]' , dims=2); 
-        @. Qⱼ1[pure_res] = ((1-β) * Ew̃ᵢ[pure_res] * H̃ᵣᵢ[pure_res]) / ((1-θᵢ0[pure_res]) * Lᵢ[pure_res]);
-        @. Qⱼ1[pure_emp] = ((1-α) * Ỹⱼ[pure_emp]) / (θᵢ0[pure_emp] * Lᵢ[pure_emp]); 
-        @. Qⱼ1[shared_space] = (((1-α) * Ỹⱼ[shared_space]) + ((1-β) * Ew̃ᵢ[shared_space] * H̃ᵣᵢ[shared_space])) / Lᵢ[shared_space]; # akin to: θ * Qⱼ1[pure_emp] + (1-θ) * Qⱼ1[pure_res]
-        
-        # update error metrics here
-        iter += 1; 
-        err_Q = @. $round($maximum(abs(Qⱼ1 - Qⱼ0)),digits=tol_digits); 
-        err_w = @. $round($maximum(abs(w̃ⱼ1 - w̃ⱼ0)),digits=tol_digits); 
-        err_θ = @. $round($maximum(abs(θᵢ1 - θᵢ0)),digits=tol_digits); 
+            # --- θᵢ through eq. 10 (CPO wrt Lₘ, i.e., S.23) + S.53 --- PS.: my understanding is that since Lᵢ is exogenous, S.53 guarantees a market-clearing equilibrium.
+            @. Lₘⱼ[pos_employment] = (1-α) * Ỹⱼ[pos_employment] / Qⱼ0[pos_employment]; # you could maybe use S.49 here?!
+            @. θᵢ1[shared_space] = Lₘⱼ[shared_space] / (Lᵢ[shared_space]);
 
-        # revise guesses (safer damping; otherwise it 'bounces' a lot)
-        @. Qⱼ0 = (1-damp_fact) * Qⱼ0 + damp_fact * Qⱼ1 ;
-        @. w̃ⱼ0 = (1-damp_fact) * w̃ⱼ0 + damp_fact * w̃ⱼ1 ;
-        @. θᵢ0 = (1-damp_fact) * θᵢ0 + damp_fact * θᵢ1 ;
+            # update error metrics here
+            iter += 1; 
+            err_Q = @. $round($maximum(abs(Qⱼ1 - Qⱼ0)),digits=tol_digits); 
+            err_w = @. $round($maximum(abs(w̃ⱼ1 - w̃ⱼ0)),digits=tol_digits); 
+            err_θ = @. $round($maximum(abs(θᵢ1 - θᵢ0)),digits=tol_digits); 
 
-        # Print convergence rate
-        println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0)])
+            # revise guesses (safer damping; otherwise it 'bounces' a lot)
+            @. Qⱼ0 = (1-damp_fact) * Qⱼ0 + damp_fact * Qⱼ1 ;
+            @. w̃ⱼ0 = (1-damp_fact) * w̃ⱼ0 + damp_fact * w̃ⱼ1 ;
+            @. θᵢ0 = (1-damp_fact) * θᵢ0 + damp_fact * θᵢ1 ;
+
+            # Print convergence rate
+            println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0)])
+        end
+    else
+        println(">>>> Solving the open-city equilibrium <<<<")
+        while ((err_Q >= tol) || (err_w >= tol) || (err_θ >= tol)) && (iter <= iter_max)
+            # updating endogenous variables by solving the model equations
+
+            # --- πᵢⱼ trough eq. 4 ---
+            @. Φᵢⱼ = (B̃ᵢ[pos_residence] * w̃ⱼ0[pos_employment]')^ε * (dᵢⱼ*Qⱼ0[pos_residence]^(1-β))^(-ε);
+            Φ =  sum(Φᵢⱼ); 
+            @. πᵢⱼ[idx_res,idx_emp] = Φᵢⱼ / Φ;
+
+            # --- H̃ through eq. 9  
+            Ūres = γ * Φ ^ (1/ε);
+            H̃ = (Ūres/Ū)^ε * H̃; # increase population if within-city utility exceeds that of the wider economy; from eq. 9 one can also infer that employment scales in utility at elasticity ε. 
+
+            # --- H̃ₘⱼ and H̃ᵣᵢ through eq. 5 ---
+            @. H̃ₘⱼ = $sum(πᵢⱼ, dims=1)' * H̃ ;
+            @. H̃ᵣᵢ = $sum(πᵢⱼ, dims=2) * H̃ ;
+            
+            # --- w̃ⱼ through eq. 10 + eq. 11 ---
+            @. Ỹⱼ = Ãⱼ * H̃ₘⱼ^α * (θᵢ0 * Lᵢ)^(1-α); 
+            @. w̃ⱼ1[pos_employment] = α * Ỹⱼ[pos_employment] / H̃ₘⱼ[pos_employment];
+
+            # --- Qᵢ thorugh eq. S.20 + eq. 17 + eq. 18 + eq. 14 ---
+            @. Ew̃ᵢ[pos_residence] = $sum(πᵢⱼ[idx_res,idx_emp] / $sum(πᵢⱼ[idx_res,idx_emp], dims=2) * w̃ⱼ0[pos_employment]' , dims=2); 
+            @. Qⱼ1[pure_res] = ((1-β) * Ew̃ᵢ[pure_res] * H̃ᵣᵢ[pure_res]) / ((1-θᵢ0[pure_res]) * Lᵢ[pure_res]);
+            @. Qⱼ1[pure_emp] = ((1-α) * Ỹⱼ[pure_emp]) / (θᵢ0[pure_emp] * Lᵢ[pure_emp]); # you could maybe use S.24 here?!
+            @. Qⱼ1[shared_space] = (((1-α) * Ỹⱼ[shared_space]) + ((1-β) * Ew̃ᵢ[shared_space] * H̃ᵣᵢ[shared_space])) / Lᵢ[shared_space]; # akin to: θ * Qⱼ1[pure_emp] + (1-θ) * Qⱼ1[pure_res]
+
+            # --- θᵢ through eq. 10 (CPO wrt Lₘ, i.e., S.23) + S.53 --- PS.: my understanding is that since Lᵢ is exogenous, S.53 guarantees a market-clearing equilibrium.
+            @. Lₘⱼ[pos_employment] = (1-α) * Ỹⱼ[pos_employment] / Qⱼ0[pos_employment]; # you could maybe use S.49 here?!
+            @. θᵢ1[shared_space] = Lₘⱼ[shared_space] / (Lᵢ[shared_space]);
+
+            # update error metrics here
+            iter += 1; 
+            err_Q = @. $round($maximum(abs(Qⱼ1 - Qⱼ0)),digits=tol_digits); 
+            err_w = @. $round($maximum(abs(w̃ⱼ1 - w̃ⱼ0)),digits=tol_digits); 
+            err_θ = @. $round($maximum(abs(θᵢ1 - θᵢ0)),digits=tol_digits); 
+
+            # revise guesses (safer damping; otherwise it 'bounces' a lot)
+            @. Qⱼ0 = (1-damp_fact) * Qⱼ0 + damp_fact * Qⱼ1 ;
+            @. w̃ⱼ0 = (1-damp_fact) * w̃ⱼ0 + damp_fact * w̃ⱼ1 ;
+            @. θᵢ0 = (1-damp_fact) * θᵢ0 + damp_fact * θᵢ1 ;
+
+            # Print convergence rate
+            println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0)])
+        end
     end
-
     # Print status
     if iter < iter_max
         println(">>>> Equilibrium achieved! <<<<")
@@ -352,5 +410,9 @@ function solve_equilibrium(params, exo_fund; prices_guess = nothing, tol_digits=
     GC.gc(true)
 
     # Return the equilibrium endogenous variables 
-    return w̃ⱼ0, θᵢ0, Qⱼ0, πᵢⱼ, H̃
+    if closed_city
+        return w̃ⱼ0, θᵢ0, Qⱼ0, πᵢⱼ, Ū
+    else
+        return w̃ⱼ0, θᵢ0, Qⱼ0, πᵢⱼ, H̃
+    end
 end
