@@ -196,7 +196,7 @@ snty_check_eq = [
 println("Does this equilibrium match the data? $(sum(snty_check_eq)==length(snty_check_eq))")
 
 # solve the equilibrium blindly (it takes a long time!)
-w̃ⱼeqb, θᵢeqb, Qⱼeqb, πᵢⱼeqb, Ūeqb = solve_equilibrium(params, exo_fund, damp_fact = 0.5);
+w̃ⱼeqb, θᵢeqb, Qⱼeqb, πᵢⱼeqb, Ūeqb = solve_equilibrium(params, exo_fund, H, damp_fact = 0.5);
 
 # validaring if initial guesses lead to different results...
 snty_check_guess = [
@@ -227,34 +227,4 @@ w̃ⱼpub, θᵢpub, Qⱼpub, πᵢⱼpub, Ūpub = solve_equilibrium(params, ex
 
 # welfare analysis (eq. 9)
 println("The welfare change from banning cars would be of: $(round(100*(Ūpub-Ūeq)/Ūeq,digits=2))%")
-
-# *************
-# *** debug ***
-# *************
-
-# using matlab produced data to check if the difference is in my function!
-fileIn = matopen("C:/Users/pedro.maia/Downloads/ARSW2015-toolkit-main/ARSW2015-toolkit-main/matlab/data/output/exogcftual_prep_big_TD.mat");
-dset = read(fileIn);
-fund = dset["fund"];
-A=fund[:,1]; B=fund[:,2]; V=fund[:,3]; K=fund[:,4];
-QT=fund[:,5]; HMT=fund[:,6]; HRT=fund[:,7];
-LM=fund[:,8]; LR=fund[:,9]; LD=fund[:,10];
-wage=fund[:,11]; vv=fund[:,12]; theta = dset["theta06"];
-
-snty_check_algo = [
-    snty_check(Ãⱼ, A), 
-    snty_check(B̃ᵢ, B),
-    snty_check(w̃ⱼ, wage),
-    snty_check(Tw̃ᵢ, vv), 
-    snty_check(Lᵢ, LD), 
-    snty_check(θᵢ, theta), 
-    snty_check(H̃ₘⱼ, HMT), 
-    snty_check(H̃ᵣᵢ, HRT)];
-
-exo_fund_ctf = (A, B, φᵢ, K, τᵢⱼpub);
-prices_guess = (QT,wage,LM./LD);
-
-w̃ⱼmat, θᵢmat, Qⱼmat, πᵢⱼmat, H̃mat = solve_equilibrium(params, exo_fund_ctf, prices_guess = prices_guess);
-Ūmat = γ * (H̃mat^(1/ε)); 
-println("The welfare change from banning cars would be of: $(round(100*(Ūmat-Ūeq)/Ūeq,digits=2))%")
 
