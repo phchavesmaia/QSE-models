@@ -9,9 +9,9 @@ It follows a list of what remains to be implemented:
     - [X] Sequential algorithim;
     - [X] Simultaneous algorithm;
     - [X] Both algorithms return identical results.
-- [ ] Implement the counterfactual exercises with **exogenous** fundamentals.
+- [X] Implement the counterfactual exercises with **exogenous** fundamentals.
     - [X] Solve model for exogenous fundamentals;
-    - [ ] Implement counterfactuals (**the results are not matching to the toolkit!**).
+    - [X] Implement counterfactuals.
 - [ ] Implement the counterfactual exercises with **endogenous** fundamentals
     - [ ] Solve model for endogenous fundamentals;
     - [ ] Implement counterfactuals.
