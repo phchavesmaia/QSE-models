@@ -46,8 +46,7 @@ Random.seed!(s)
 "
 # read 1986 data
 fileIn = matopen("./data/input/prepdata_big_TD86.mat");
-dset = read(fileIn);
-close(fileIn);
+dset = read(fileIn); close(fileIn);
 "
 It follows a brief data dictionary:
 ----------
@@ -61,7 +60,7 @@ bzk86rw = mapping of Blocks to Bezirkes
 "
 S = Int64(dset["nobs86rw"]); Qⱼ = dset["floor86rw"]; Hₘⱼ = dset["empwpl86rw"] ; Hᵣᵢ = dset["emprsd86rw"]; τᵢⱼ = dset["tt86rw"]'; # using the paper notation
 block_bzk = dset["bzk86rw"]; # map from blocks to districts 
-dset = nothing; GC.gc() # free memory
+dset = nothing;
 
 bzkwge = CSV.read("./data/input/wageworker1986.csv", DataFrame; header = false); # Bezirke (district) raw wage data
 lwⱼ = log.(bzkwge.Column2); # taking log
@@ -90,7 +89,7 @@ println("The slope of the model/real workplace population data is: $(snty_check(
 # *** Calibration of exogenous fundamentals (model inversion, 2006) ***
 # *********************************************************************
 
-GC.gc() # garbage collector
+GC.gc() # garbage collector (free memory)
 
 "
     As explained in the ARSW Codebook, the functions implemented in this section
@@ -101,8 +100,7 @@ GC.gc() # garbage collector
 
 # read 2006 data
 fileIn = matopen("./data/input/prepdata_big_TD.mat");
-dset = read(fileIn);
-close(fileIn);
+dset = read(fileIn); close(fileIn);
 "
 It follows a brief data dictionary:
 ----------
@@ -116,8 +114,7 @@ area06 = geographical area
 ----------
 "
 Qⱼ = dset["floor06"]; Hₘⱼ = dset["empwpl06"] ; Hᵣᵢ = dset["emprsd06"]; τᵢⱼ = dset["tt06"]; Kᵢ = dset["area06"];
-block_bzk06 = dset["bzk06"]; 
-dset = nothing; GC.gc() # free memory
+block_bzk06 = dset["bzk06"]; dset = nothing; 
 
 # computing the structural fundamentals of the model SEQUENTIALLY
 Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, φᵢ, Lᵢ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
@@ -162,7 +159,7 @@ mapit("./data/shapefile/Berlin4matlab1.shp",φᵢ,"Density of Development", labe
 # *** Solving 2006 equilibrium (exogenous fundamentals) *** 
 # *********************************************************
 
-GC.gc() # garbage collector
+GC.gc() # garbage collector (free memory)
 
 "
     This section of the code will solve the model by inputing
@@ -182,21 +179,31 @@ prices_guess = (Qⱼ, w̃ⱼ, θᵢ);
 
 # solve the CLOSED-CITY equilibrium using data/model-consistent initial guesses
 H = sum(Hᵣᵢ);
-w̃ⱼeq, θᵢeq, Qⱼeq, πᵢⱼeq, Ūeq = solve_equilibrium(params, exo_fund, H ,prices_guess = prices_guess, damp_fact = 0.5);
+w̃ⱼeq, θᵢeq, Qⱼeq, πᵢⱼeq, Ūeq = solve_equilibrium(params, exo_fund, H, closed_city = true, prices_guess = prices_guess);
 
-# solve THE OPEN-CITY equilibrium using data/model-consistent initial guesses
-w̃ⱼeq, θᵢeq, Qⱼeq, πᵢⱼeq, H̃eq = solve_equilibrium(params, exo_fund, Ūeq , closed_city = false, prices_guess = prices_guess, damp_fact = 0.5);
-
-# validating the equilibrium variables with real data
-snty_check_eq = [
+# validating the CLOSED-CITY equilibrium variables with real data
+snty_check_eq_closed = [
     snty_check(w̃ⱼeq,w̃ⱼ,tol=3),
     snty_check(θᵢeq,θᵢ,tol=3),
     snty_check(Qⱼeq,Qⱼ,tol=3),
     snty_check(πᵢⱼeq,πᵢⱼ,tol=3)];
-println("Does this equilibrium match the data? $(sum(snty_check_eq)==length(snty_check_eq))")
+println("Does this CLOSED-CITY equilibrium match the data? $(sum(snty_check_eq_closed)==length(snty_check_eq_closed))")
 
-# solve the equilibrium blindly (it takes a long time!)
-w̃ⱼeqb, θᵢeqb, Qⱼeqb, πᵢⱼeqb, Ūeqb = solve_equilibrium(params, exo_fund, H, damp_fact = 0.5);
+# solve THE OPEN-CITY equilibrium using data/model-consistent initial guesses
+w̃ⱼeq_open, θᵢeq_open, Qⱼeq_open, πᵢⱼeq_open, H̃eq_open = solve_equilibrium(params, exo_fund, Ūeq, closed_city = false, prices_guess = prices_guess);
+
+# validating the OPEN-CITY equilibrium variables with real data
+snty_check_eq_open = [
+    snty_check(w̃ⱼ,w̃ⱼeq_open,tol=3),
+    snty_check(θᵢ,θᵢeq_open,tol=3),
+    snty_check(Qⱼ,Qⱼeq_open,tol=3),
+    snty_check(πᵢⱼ,πᵢⱼeq_open,tol=3),
+    Int(round(H/H̃eq_open,digits=3))];
+    
+println("Does this OPEN-CITY equilibrium match the data? $(sum(snty_check_eq_open)==length(snty_check_eq_open))")
+
+# solve the CLOSED-CITY equilibrium blindly (no initial guesses at prices)
+w̃ⱼeqb, θᵢeqb, Qⱼeqb, πᵢⱼeqb, Ūeqb = solve_equilibrium(params, exo_fund, H, closed_city = true);
 
 # validaring if initial guesses lead to different results...
 snty_check_guess = [
@@ -204,20 +211,19 @@ snty_check_guess = [
     snty_check(θᵢeq,θᵢeqb,tol=3),
     snty_check(Qⱼeq,Qⱼeqb,tol=3),
     snty_check(πᵢⱼeq,πᵢⱼeqb,tol=3),
-    Int(round(H̃eq,digits=0) == round(H̃eqb,digits=3))];
-println("Are the results robust to different initial guesses (is the eq. perfectly identified)? $(sum(snty_check_eq)==length(snty_check_eq))")
+    Int(round(Ūeq/Ūeqb,digits=3))];
+println("Are the CLOSED-CITY results robust to different initial guesses (is the eq. perfectly identified)? $(sum(snty_check_eq)==length(snty_check_eq))")
 
 # *****************************************************************
 # *** Counterfactuals 2006 equilibrium (exogenous fundamentals) *** 
 # *****************************************************************
 
-GC.gc() # garbage collector
+GC.gc() # garbage collector (free memory)
 
 # --- What happens if we ban cars in the entire city? --- #
 fileIn = matopen("./data/input/ttpublic_2006_ren.mat");
-dset = read(fileIn);
-close(fileIn);
-τᵢⱼpub = dset["ttpub06"]; # read counterfactual bilateral travel time matrix
+dset = read(fileIn); close(fileIn);
+τᵢⱼpub = dset["ttpub06"]; dset = nothing # read counterfactual bilateral travel time matrix
 
 # enunciate altered exogenous fundamentals of the model
 exo_fund_ctf = (Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼpub); 
