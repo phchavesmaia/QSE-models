@@ -147,8 +147,8 @@ function solve_equilibrium(params, exo_fund, pop_uti; prices_guess = nothing, to
 
     # Return the equilibrium endogenous variables 
     if closed_city
-        return w̃ⱼ0, θᵢ0, Qⱼ0, πᵢⱼ, Ū
+        return Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, Ū
     else
-        return w̃ⱼ0, θᵢ0, Qⱼ0, πᵢⱼ, H̃
+        return Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, H̃
     end
 end
