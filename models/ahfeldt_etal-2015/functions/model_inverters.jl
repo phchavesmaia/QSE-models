@@ -7,12 +7,13 @@ function cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
         1. Qⱼ = rent prices; 
         2. Hₘⱼ = workplace employment (population);
         3. Hᵣᵢ = residential employment (population);
-        4. τᵢⱼ = bilateral travel time matrix s.t. rows (i) denote 
+    And the exogenous fundamentals
+        1. τᵢⱼ = bilateral travel time matrix s.t. rows (i) denote 
             residences and columns (j) denote workplaces; and
-        5. Kᵢ = geographical area (unkown unit).
-    The output of this function is the set of structural fundamentals
-    of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that 
-    are consistent with the observed equilibrium.
+        2. Kᵢ = geographical area (unkown unit).
+    The output of this function is the set of structural fundamentals and
+    endogenous variales of of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, 
+    θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that are consistent with the observed equilibrium.
     --- IGNORE ---
     This function solves for the equilibrium of the model by iterating 
     over wages to assess for the equilibrium productivity. All else is
@@ -114,9 +115,6 @@ function cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
     # Density of development (equation 19/S31)
     ϕᵢ = @. Lᵢᴰ/(Kᵢ^(1-μ));
     
-    # Garbage collector
-    GC.gc(true)
-    
     return Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end
 
@@ -129,12 +127,13 @@ function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_ma
         1. Qⱼ = rent prices; 
         2. Hₘⱼ = workplace employment (population);
         3. Hᵣᵢ = residential employment (population);
-        4. τᵢⱼ = bilateral travel time matrix s.t. rows (i) denote 
+    and structural fundamentals:
+        1. τᵢⱼ = bilateral travel time matrix s.t. rows (i) denote 
             residences and columns (j) denote workplaces; and
-        5. Kᵢ = geographical area (unkown unit).
-    The output of this function is the set of structural fundamentals
-    of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that 
-    are consistent with the observed equilibrium.
+        2. Kᵢ = geographical area (unkown unit).
+    The output of this function is the set of structural fundamentals and
+    endogenous variables of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, 
+    H̃ₘⱼ, H̃ᵣᵢ, CMA) that are consistent with the observed equilibrium.
     --- IGNORE ---
     This function solves for the equilibrium of the model by simultaneously
     iterating over guesses of Ãⱼ and B̃ᵢ up until convergence is achieved.
@@ -226,158 +225,5 @@ function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_ma
     # Compute commercial floor space share θᵢ (definition) 
     θᵢ = @. Lᵢᴹ / Lᵢᴰ;
 
-    # Garbage collector
-    GC.gc(true)
-
     return Ãⱼ0, B̃ᵢ0, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end 
-
-function solve_equilibrium(params, exo_fund, pop_uti; prices_guess = nothing, tol_digits=3, iter_max=1000, damp_fact = 0.5, closed_city=true)
-    "
-        This function assumes that you have predefined the parameters
-        {α, β, κ, ε, and μ}. It then solves for the general equilibrium 
-        of the model given the structural exogenous fundamentals:
-            1. Ãⱼ = workplace productivity;
-            2. B̃ᵢ = residential amenities;
-            3. φᵢ = density of development;
-            4. Kᵢ = geographical area; and
-            5. τᵢⱼ = bilateral travel time matrix.
-        The output of this function is the set of endogenous equilibrium
-        variables {w̃ⱼ, θᵢ, Qⱼ, πᵢⱼ, H̃} that satisfy labor and land market
-        clearing conditions. The equilibrium is defined in page 18 (2143)
-        of the paper.
-        --- IGNORE ---
-        1.  This function solves for the equilibrium of the model by simultaneously
-            iterating over guesses of w̃ⱼ, θᵢ and Qⱼ until convergence is achieved, 
-            using a damping factor to ensure stability.
-        2.  In the ARSW tookit, the tolerance is implicitly of 2 digits. I will be 
-            a little stricter and impose a 3-digit tolerance to leverage on Julia's
-            higher computational efficiency. This is different from the rest of the
-            functions which have a 6-digit tolerance as standard.
-    "
-    # unpack parameters
-    α, β, κ, ε, μ = params; γ = gamma((ε-1)/ε);
-    Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ = exo_fund;
-
-    # separate last argument between the open- and closed-city cases
-    if closed_city
-        H̃ = pop_uti;
-        Ū = 1;
-    else 
-        Ū = pop_uti;
-        H̃ = 1;
-    end 
-
-    # positional variables
-    pos_employment = vec(Ãⱼ.>0) ; pos_residence = vec(B̃ᵢ.>0);
-    idx_emp = findall(pos_employment) ; idx_res = findall(pos_residence);
-    n_places = size(Kᵢ,1); n_workplaces = size(idx_emp,1); n_residence = size(idx_res,1);
-    pure_emp = @. (Ãⱼ>0) & (B̃ᵢ==0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
-    pure_res = @. (Ãⱼ==0) & (B̃ᵢ>0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
-    shared_space = @. (Ãⱼ>0) & (B̃ᵢ>0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
-    
-    # initial guess for the endogenous variables of the model
-    if isnothing(prices_guess)
-        Qⱼ0 = ones(n_places,1);
-        w̃ⱼ0 = ones(n_places,1);
-        θᵢ0 = ones(n_places,1);
-        @. θᵢ0[pure_res] = 0; 
-        @. θᵢ0[shared_space] = 0.5; 
-    else
-        Qⱼ0, w̃ⱼ0, θᵢ0 = deepcopy(prices_guess); 
-    end
-
-    # initializing variables to be updated in the loop
-    Qⱼ1 = zeros(n_places,1); w̃ⱼ1 = zeros(n_places,1);
-    θᵢ1 = zeros(n_places,1); H̃ₘⱼ = zeros(n_places,1); 
-    H̃ᵣᵢ = zeros(n_places,1); Ỹⱼ = zeros(n_places,1); 
-    Ew̃ᵢ = zeros(n_places,1); Φᵢⱼ = zeros(n_residence, n_workplaces);
-    Lₘⱼ = zeros(n_places,1); πᵢⱼ = zeros(n_places, n_places);
-
-    # completely specialized blocks never change since amenity or productivity are zero  
-    @. θᵢ1[pure_emp] = 1;
-    @. θᵢ1[pure_res] = 0;
-    
-    # defining loop variables
-    iter = 0; tol = 10.0^(-tol_digits);
-    err_Q = 10000; err_w = 10000; err_θ = 10000;
-    
-    # other variables 
-    dᵢⱼ = @. exp(κ*τᵢⱼ[idx_res,idx_emp]); # by assumption
-    Lᵢ = @. φᵢ * Kᵢ^(1-μ); # eq. 19
-
-    # initiate the model loop
-    if closed_city
-        println(">>>> Solving the closed-city equilibrium <<<<")
-    else
-        println(">>>> Solving the open-city equilibrium <<<<")
-    end
-
-    while ((err_Q >= tol) || (err_w >= tol) || (err_θ >= tol)) && (iter <= iter_max)
-        # updating endogenous variables by solving the model equations
-
-        # --- πᵢⱼ through eq. 4 ---
-        @. Φᵢⱼ = (B̃ᵢ[pos_residence] * w̃ⱼ0[pos_employment]')^ε * (dᵢⱼ*Qⱼ0[pos_residence]^(1-β))^(-ε);
-        Φ =  sum(Φᵢⱼ); 
-        @. πᵢⱼ[idx_res,idx_emp] = Φᵢⱼ / Φ;
-        
-        # --- spatial equilibrium condition through eq. 9 ---
-        if closed_city
-            # Ū is endogenous in the closed-city equilibrium
-            Ū = γ * Φ ^ (1/ε);
-        else
-            # H̃ is endogenous in the open-city equilibrium
-            Ūcity = γ * Φ ^ (1/ε);
-            H̃ = (Ūcity/Ū)^ε * H̃; # increase population if within-city utility exceeds that of the wider economy; from eq. 9 one can also infer that employment scales in utility at elasticity ε. 
-        end
-
-        # --- H̃ₘⱼ and H̃ᵣᵢ through eq. 5 ---
-        @. H̃ₘⱼ = $sum(πᵢⱼ, dims=1)' * H̃ ;
-        @. H̃ᵣᵢ = $sum(πᵢⱼ, dims=2) * H̃ ;
-        
-        # --- w̃ⱼ through eq. 10 + eq. 11 ---
-        @. Ỹⱼ = Ãⱼ * H̃ₘⱼ^α * (θᵢ0 * Lᵢ)^(1-α); 
-        @. w̃ⱼ1[pos_employment] = α * Ỹⱼ[pos_employment] / H̃ₘⱼ[pos_employment];
-
-        # --- Qᵢ thorugh eq. S.20 + eq. 17 + eq. 18 + eq. 14 ---
-        @. Ew̃ᵢ[pos_residence] = $sum(πᵢⱼ[idx_res,idx_emp] / $sum(πᵢⱼ[idx_res,idx_emp], dims=2) * w̃ⱼ0[pos_employment]' , dims=2); 
-        @. Qⱼ1[pure_res] = ((1-β) * Ew̃ᵢ[pure_res] * H̃ᵣᵢ[pure_res]) / ((1-θᵢ0[pure_res]) * Lᵢ[pure_res]);
-        @. Qⱼ1[pure_emp] = ((1-α) * Ỹⱼ[pure_emp]) / (θᵢ0[pure_emp] * Lᵢ[pure_emp]); # you could maybe use S.24 here?!
-        @. Qⱼ1[shared_space] = (((1-α) * Ỹⱼ[shared_space]) + ((1-β) * Ew̃ᵢ[shared_space] * H̃ᵣᵢ[shared_space])) / Lᵢ[shared_space]; # akin to: θ * Qⱼ1[pure_emp] + (1-θ) * Qⱼ1[pure_res]
-
-        # --- θᵢ through eq. 10 (CPO wrt Lₘ, i.e., S.23) + S.53 --- PS.: my understanding is that since Lᵢ is exogenous, S.53 guarantees a market-clearing equilibrium.
-        @. Lₘⱼ[pos_employment] = (1-α) * Ỹⱼ[pos_employment] / Qⱼ0[pos_employment]; # you could maybe use S.49 here?!
-        @. θᵢ1[shared_space] = Lₘⱼ[shared_space] / (Lᵢ[shared_space]);
-
-        # update error metrics here
-        iter += 1; 
-        err_Q = @. $round($maximum(abs(Qⱼ1 - Qⱼ0)),digits=tol_digits); 
-        err_w = @. $round($maximum(abs(w̃ⱼ1 - w̃ⱼ0)),digits=tol_digits); 
-        err_θ = @. $round($maximum(abs(θᵢ1 - θᵢ0)),digits=tol_digits); 
-
-        # revise guesses (safer damping; otherwise it 'bounces' a lot)
-        @. Qⱼ0 = (1-damp_fact) * Qⱼ0 + damp_fact * Qⱼ1 ;
-        @. w̃ⱼ0 = (1-damp_fact) * w̃ⱼ0 + damp_fact * w̃ⱼ1 ;
-        @. θᵢ0 = (1-damp_fact) * θᵢ0 + damp_fact * θᵢ1 ;
-
-        # Print convergence rate
-        println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0)])
-    end
-    
-    # Print status
-    if iter < iter_max
-        println(">>>> Equilibrium achieved! <<<<")
-    else
-        println(">>>> Failed to find an equilibrium <<<<")
-    end
-
-    # Garbage collector
-    GC.gc(true)
-
-    # Return the equilibrium endogenous variables 
-    if closed_city
-        return w̃ⱼ0, θᵢ0, Qⱼ0, πᵢⱼ, Ū
-    else
-        return w̃ⱼ0, θᵢ0, Qⱼ0, πᵢⱼ, H̃
-    end
-end
