@@ -7,7 +7,7 @@ function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500, ε = 1
     "
     # initiate main loop and output variables
     n_places = size(Hₘⱼ,1);
-    ωⱼ  = zeros(n_places,1); Ĥₘⱼ = zeros(n_places,1);
+    ωⱼ  = zeros(n_places); Ĥₘⱼ = zeros(n_places);
     pos_employment = vec(Hₘⱼ.>0); pos_residence = vec(Hᵣᵢ.>0) ; # identifying places with firms and residents
     x=1; err = 10000; tol = 10.0^(-tol_digits); # defining loop variables
 
@@ -18,14 +18,14 @@ function get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ; tol_digits=6, x_max = 500, ε = 1
     Hₘⱼ = Hₘⱼ[pos_employment]; n_workplaces = size(Hₘⱼ,1);
 
     # initiating some more variables for numerical efficiency
-    Ĥₘⱼ0 = zeros(n_workplaces,1); 
+    Ĥₘⱼ0 = zeros(n_workplaces); 
     dᵢⱼε = @. exp(ν * τᵢⱼ); # pre-computing the, by assumption, iceberg commuting cost times ε for numerical efficiency
     
     # initial guess on transformed wages ωⱼ 
     ωⱼ0 = ωⱼ[pos_employment]; 
     w̃ⱼ0 = @. (((1-α)/Qⱼ[pos_employment])^((1-α)/α))*α # initial guess on ADJUSTED wages following Equation (12) which combines first-order condition and zero-profit conditions, after setting Aⱼ = 1.
     @. ωⱼ0 = w̃ⱼ0 ^ ε; # initial guess on TRANSFORMED wages using that ω = w̃^ε.
-    ωⱼ1 = zeros(n_workplaces,1);
+    ωⱼ1 = zeros(n_workplaces);
 
     # announcing the function
     println(">>>> Calibrating ω <<<<")

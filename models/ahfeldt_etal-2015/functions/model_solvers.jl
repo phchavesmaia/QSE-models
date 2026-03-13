@@ -1,4 +1,39 @@
-function solve_equilibrium(params, exo_fund, pop_uti; prices_guess = nothing, tol_digits=3, iter_max=1000, damp_fact = 0.5, closed_city=true)
+module ModelSolver
+
+using SpecialFunctions
+export ModelParameters, ExogenousFundamentals, PricesGuess, solve_equilibrium
+struct ModelParameters
+    α::Real # Share Of consumption
+    β::Real # Share Of Labor Costs
+    κ::Real # Size Of Commuting Costs
+    ε::Real # Fréchet Shape Parameter
+    μ::Real # Share Of Capital In Construction Costs
+end
+
+struct ExogenousFundamentals
+    Ãⱼ::Vector{Float64} # Workplace Productivity
+    B̃ᵢ::Vector{Float64} # Residential Amenities 
+    φᵢ::Vector{Float64} # Density Of Development 
+    Kᵢ::Vector{Float64} # Geographical Area
+    τᵢⱼ::Matrix{Float64} # Bilateral Travel Time Matrix (i=coming from; j=going to)
+end
+
+struct PricesGuess
+    Qⱼ0::Vector{Float64} # Rent
+    w̃ⱼ0::Vector{Float64} # Wages
+    θᵢ0::Vector{Float64} # Share Of Commercial Floorspace
+end
+
+function PricesGuess(n_places::Int, pure_res, shared_space)
+    Q = ones(n_places)
+    w = ones(n_places)
+    θ = ones(n_places)
+    θ[pure_res] .= 0
+    θ[shared_space] .= 0.5
+    return PricesGuess(Q, w, θ)
+end
+
+function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundamentals, pop_uti::Real; prices_guess::Union{PricesGuess, Nothing} = nothing, tol_digits=3, iter_max=1000, damp_fact = 0.5, closed_city=true)
     "
         This function assumes that you have predefined the parameters
         {α, β, κ, ε, and μ}. It then solves for the general equilibrium 
@@ -30,17 +65,12 @@ function solve_equilibrium(params, exo_fund, pop_uti; prices_guess = nothing, to
             functions which have a 6-digit tolerance as standard.
     "
     # unpack parameters
-    α, β, κ, ε, μ = params; γ = gamma((ε-1)/ε);
-    Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ = exo_fund;
+    (; α, β, κ, ε, μ) = params; γ = gamma((ε-1)/ε);
+    (; Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ) = exo_fund;
 
     # separate last argument between the open- and closed-city cases
-    if closed_city
-        H̃ = pop_uti;
-        Ū = 1;
-    else 
-        Ū = pop_uti;
-        H̃ = 1;
-    end 
+    H̃ = closed_city ? pop_uti : 1;
+    Ū = closed_city ? 1 : pop_uti;   
 
     # positional variables
     pos_employment = vec(Ãⱼ.>0) ; pos_residence = vec(B̃ᵢ.>0);
@@ -49,24 +79,16 @@ function solve_equilibrium(params, exo_fund, pop_uti; prices_guess = nothing, to
     pure_emp = @. (Ãⱼ>0) & (B̃ᵢ==0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
     pure_res = @. (Ãⱼ==0) & (B̃ᵢ>0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
     shared_space = @. (Ãⱼ>0) & (B̃ᵢ>0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
-    
-    # initial guess for the endogenous variables of the model
-    if isnothing(prices_guess)
-        Qⱼ0 = ones(n_places,1);
-        w̃ⱼ0 = ones(n_places,1);
-        θᵢ0 = ones(n_places,1);
-        @. θᵢ0[pure_res] = 0; 
-        @. θᵢ0[shared_space] = 0.5; 
-    else
-        Qⱼ0, w̃ⱼ0, θᵢ0 = deepcopy(prices_guess); 
-    end
+
+    # initial guess for the equilibrium prices of the model
+    (; Qⱼ0, w̃ⱼ0, θᵢ0) = isnothing(prices_guess) ? PricesGuess(n_places, pure_res, shared_space) : prices_guess
 
     # initializing variables to be updated in the loop
-    Qⱼ1 = zeros(n_places,1); w̃ⱼ1 = zeros(n_places,1);
-    θᵢ1 = zeros(n_places,1); H̃ₘⱼ = zeros(n_places,1); 
-    H̃ᵣᵢ = zeros(n_places,1); Ỹⱼ = zeros(n_places,1); 
-    Ew̃ᵢ = zeros(n_places,1); Φᵢⱼ = zeros(n_residence, n_workplaces);
-    Lₘⱼ = zeros(n_places,1); πᵢⱼ = zeros(n_places, n_places);
+    Qⱼ1 = zeros(n_places); w̃ⱼ1 = zeros(n_places);
+    θᵢ1 = zeros(n_places); H̃ₘⱼ = zeros(n_places); 
+    H̃ᵣᵢ = zeros(n_places); Ỹⱼ = zeros(n_places); 
+    Ew̃ᵢ = zeros(n_places); Φᵢⱼ = zeros(n_residence, n_workplaces);
+    Lₘⱼ = zeros(n_places); πᵢⱼ = zeros(n_places, n_places);
 
     # completely specialized blocks never change since amenity or productivity are zero  
     @. θᵢ1[pure_emp] = 1;
@@ -151,4 +173,6 @@ function solve_equilibrium(params, exo_fund, pop_uti; prices_guess = nothing, to
     else
         return Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, H̃
     end
+end
+
 end

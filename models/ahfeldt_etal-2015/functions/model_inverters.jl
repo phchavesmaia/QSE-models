@@ -43,11 +43,11 @@ function cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
 
     # Commuting market access (CMA) from eq. (29)
     dᵢⱼ= @. exp(κ * τᵢⱼ[idx_res,idx_emp]); # iceberg commuting cost, by assumption
-    CMA = zeros(n_places,1);
+    CMA = zeros(n_places);
     @. CMA[pos_residence] = $sum(ωⱼ[pos_employment]' / (dᵢⱼ^ε), dims=2); 
 
     # Amenities from equation (28) or (S.47)
-    B̃ᵢ = zeros(n_places,1); 
+    B̃ᵢ = zeros(n_places); 
     Hᵣᵢᵃ = @. Hᵣᵢ[pos_residence] / $geomean(Hᵣᵢ[pos_residence]);
     Qⱼᵃ = @. Qⱼ[pos_residence] / $geomean(Qⱼ[pos_residence]);
     CMAᵃ = @. CMA[pos_residence] / $geomean(CMA[pos_residence]); 
@@ -90,7 +90,7 @@ function cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6)
     H̃ᵣᵢ = @. πᵣᵢ * $sum(Hᵣᵢ);
 
     # Compute expected residential work income (eq. S20)
-    Ew̃ᵢ = zeros(n_places,1);
+    Ew̃ᵢ = zeros(n_places);
     @. Ew̃ᵢ[pos_residence] = $sum(πᵢⱼ[idx_res,idx_emp] / πᵣᵢ[pos_residence] * w̃ⱼ[pos_employment]' , dims=2);
 
     # Compute total expected residential worker income
@@ -144,16 +144,16 @@ function cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ; tol_digits=6, iter_ma
     n_places = size(Qⱼ,1);
 
     # Defining initial guesses
-    Ãⱼ0 = zeros(n_places,1); Ãⱼ0[pos_employment] .= 1;
-    B̃ᵢ0 = zeros(n_places,1); B̃ᵢ0[pos_residence] .= 1;
+    Ãⱼ0 = zeros(n_places); Ãⱼ0[pos_employment] .= 1;
+    B̃ᵢ0 = zeros(n_places); B̃ᵢ0[pos_residence] .= 1;
 
     # initiating variables to be updated in the loop
-    w̃ⱼ = zeros(n_places,1); πᵢⱼ = zeros(n_places,n_places);
-    Tw̃ᵢ = zeros(n_places,1); Lᵢᴿ = zeros(n_places,1);
-    Lᵢᴹ = zeros(n_places,1); Ãⱼ1 = zeros(n_places,1); 
-    B̃ᵢ1 = zeros(n_places,1); H̃ₘⱼ = zeros(n_places,1); 
-    H̃ᵣᵢ = zeros(n_places,1); Φᵢⱼ = zeros(size(idx_res,1),size(idx_emp,1));
-    CMA = zeros(n_places,1);
+    w̃ⱼ = zeros(n_places); πᵢⱼ = zeros(n_places,n_places);
+    Tw̃ᵢ = zeros(n_places); Lᵢᴿ = zeros(n_places);
+    Lᵢᴹ = zeros(n_places); Ãⱼ1 = zeros(n_places); 
+    B̃ᵢ1 = zeros(n_places); H̃ₘⱼ = zeros(n_places); 
+    H̃ᵣᵢ = zeros(n_places); Φᵢⱼ = zeros(size(idx_res,1),size(idx_emp,1));
+    CMA = zeros(n_places);
     
     # Setting up convergence criteria and additional variables
     iter = 0; err_Ãⱼ = 10000; err_B̃ᵢ = 10000; tol = 10.0^(-tol_digits);

@@ -27,13 +27,22 @@ load_dir("functions")
 # *** Setting parameters ***
 # **************************
 
-# Random Number 
-s = MersenneTwister(1)
-Random.seed!(s)
+# define model parameters
+module Parameters
+    # Set parameter values to values from the literature
+    const α=0.80; 
+    const β=0.75; 
+    const μ=0.75; 
+    # Set commuting decay to reduced-form estimate (see ARSW table 3)
+    const ν=κε=0.07; 
+    # export parameters
+    export α, β, μ, ν, κε
+end 
+using .Parameters, .ModelSolver
 
-# set parameters
-α=0.80; β=0.75; μ=0.75; # Set parameter values to values from the literature                                                                  
-ν=κε=0.07; # Set commuting decay to reduced-form estimate (see ARSW table 3)
+# Random Number 
+s = MersenneTwister(1);
+Random.seed!(s);
 
 # ****************************************************************
 # *** Estimating the frechet-shape parameter ε using 1986 data ***
@@ -58,8 +67,8 @@ tt86rw = bilateral travel time matrix s.t. rows (i) denote workplaces and column
 bzk86rw = mapping of Blocks to Bezirkes
 ----------
 "
-S = Int64(dset["nobs86rw"]); Qⱼ = dset["floor86rw"]; Hₘⱼ = dset["empwpl86rw"] ; Hᵣᵢ = dset["emprsd86rw"]; τᵢⱼ = dset["tt86rw"]'; # using the paper notation
-block_bzk = dset["bzk86rw"]; # map from blocks to districts 
+Qⱼ = vec(dset["floor86rw"]); Hₘⱼ = vec(dset["empwpl86rw"]) ; Hᵣᵢ = vec(dset["emprsd86rw"]); τᵢⱼ = dset["tt86rw"]'; # using the paper notation
+block_bzk = vec(dset["bzk86rw"]); # map from blocks to districts 
 dset = nothing;
 
 bzkwge = CSV.read("./data/input/wageworker1986.csv", DataFrame; header = false); # Bezirke (district) raw wage data
@@ -68,9 +77,9 @@ lwⱼ = lwⱼ .- mean(lwⱼ); # demean wages
 Vlwⱼ = var(lwⱼ); # compute variance of log wages, our empirical moment
 
 # computing ω and ε using 86 data
-ε, Ĥₘⱼ, ωⱼ = get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ, su=block_bzk); 
-ε = round(ε, digits=2); # rounded for consistency with replication package
-κ = round(ν/ε,digits=6); # setting commuting decay to reduced-form estimate; rounded for consistency with replication package
+ε⁼, Ĥₘⱼ, ωⱼ = get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ, su=block_bzk); 
+const ε = round(ε⁼, digits=2); # rounded for consistency with replication package
+const κ = round(ν/ε,digits=6); # setting commuting decay to reduced-form estimate; rounded for consistency with replication package
 
 # Defining a sanity check function
 function snty_check(v1,v2; tol=6)
@@ -113,7 +122,7 @@ bzk06 = mapping of Blocks to Bezirkes
 area06 = geographical area 
 ----------
 "
-Qⱼ = dset["floor06"]; Hₘⱼ = dset["empwpl06"] ; Hᵣᵢ = dset["emprsd06"]; τᵢⱼ = dset["tt06"]; Kᵢ = dset["area06"];
+Qⱼ = vec(dset["floor06"]); Hₘⱼ = vec(dset["empwpl06"]); Hᵣᵢ = vec(dset["emprsd06"]); τᵢⱼ = dset["tt06"]; Kᵢ = vec(dset["area06"]);
 block_bzk06 = dset["bzk06"]; dset = nothing; 
 
 # computing the structural fundamentals of the model SEQUENTIALLY
@@ -169,13 +178,13 @@ GC.gc() # garbage collector (free memory)
     in the previous section. 
 "
 # enunciate model parameters
-params = (α, β, κ, ε, μ);
+params = ModelParameters(α, β, κ, ε, μ);
 
 # enunciate exogenous fundamentals of the model
-exo_fund = (Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ); 
+exo_fund = ExogenousFundamentals(Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ); 
 
 # enunciate guesses at equilibrium prices
-prices_guess = (Qⱼ, w̃ⱼ, θᵢ); 
+prices_guess = PricesGuess(Qⱼ, w̃ⱼ, θᵢ); 
 
 # solve the CLOSED-CITY equilibrium using data/model-consistent initial guesses
 H = sum(Hᵣᵢ);
@@ -226,7 +235,7 @@ dset = read(fileIn); close(fileIn);
 τᵢⱼpub = dset["ttpub06"]; dset = nothing # read counterfactual bilateral travel time matrix
 
 # enunciate altered exogenous fundamentals of the model
-exo_fund_ctf = (Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼpub); 
+exo_fund_ctf = ExogenousFundamentals(Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼpub); 
 
 # estimate alternative CLOSED-CITY equilibrium
 Qⱼpub, w̃ⱼpub, θᵢpub, πᵢⱼpub, Ūpub = solve_equilibrium(params, exo_fund_ctf, H, closed_city = true, prices_guess = prices_guess, tol_digits=2);
