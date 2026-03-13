@@ -3,8 +3,7 @@
 # *********************
 using  LaTeXStrings, FixedEffectModels, GeoStats, GeoIO, CSV, 
         DataFrames, Statistics, LinearAlgebra, MAT, Random, StatsBase, 
-        Optimization, OptimizationNLopt, BenchmarkTools, SparseArrays,
-        SpecialFunctions
+        Optimization, OptimizationNLopt, BenchmarkTools, SparseArrays
 import CairoMakie as Mke
 
 function load_dir(dir::String)
