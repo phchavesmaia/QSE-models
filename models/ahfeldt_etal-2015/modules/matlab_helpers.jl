@@ -2,7 +2,7 @@ module MatlabHelpers
 
 export mapit, read_mat
 
-using GeoStats, GeoIO
+using GeoStats, GeoIO, MAT
 import CairoMakie as Mke
 
 function mapit(path_from::String, data::Vector{Float64}, title::String; path_to::String="", dpi::Int64=900, label_legend::String="Log points")

@@ -1,7 +1,7 @@
 # *********************
 # **** Load Files  **** 
 # *********************
-using  LaTeXStrings, FixedEffectModels, CSV, DataFrames, Statistics, MAT, Random, BenchmarkTools 
+using  LaTeXStrings, FixedEffectModels, CSV, DataFrames, Statistics, Random, BenchmarkTools 
 
 try 
     cd("/home/phchavesmaia/Dropbox/learn-julia/qse/models/ahfeldt_etal-2015")
@@ -29,7 +29,8 @@ module Parameters
     # export parameters
     export α, β, μ, ν, κε
 end 
-using .Parameters, .MatlabHelpers, .FrechetEstimation, .ModelInverters, .ModelSolver, .Types
+
+using .Parameters, .Types, .MatlabHelpers, .FrechetEstimation, .ModelInverters, .ModelSolver
 
 # Random Number 
 s = MersenneTwister(1);
