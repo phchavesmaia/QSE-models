@@ -1,26 +1,18 @@
 # *********************
 # **** Load Files  **** 
 # *********************
-using  LaTeXStrings, FixedEffectModels, GeoStats, GeoIO, CSV, 
-        DataFrames, Statistics, LinearAlgebra, MAT, Random, StatsBase, 
-        Optimization, OptimizationNLopt, BenchmarkTools, SparseArrays
-import CairoMakie as Mke
-
-function load_dir(dir::String)
-    files = readdir(dir)
-    for file in files
-        if endswith(file, ".jl")
-            include(joinpath(dir, file))
-        end
-    end
-end
+using  LaTeXStrings, FixedEffectModels, CSV, DataFrames, Statistics, MAT, Random, BenchmarkTools 
 
 try 
     cd("/home/phchavesmaia/Dropbox/learn-julia/qse/models/ahfeldt_etal-2015")
 catch
     cd("C:/Users/pedro.maia/Dropbox/learn-julia/qse/models/ahfeldt_etal-2015/")
 end
-load_dir("functions")
+include("./modules/types.jl")
+include("./modules/matlab_helpers.jl")
+include("./modules/frechet_estimation.jl")
+include("./modules/model_inverters.jl")
+include("./modules/model_solvers.jl")
 
 # **************************
 # *** Setting parameters ***
@@ -37,7 +29,7 @@ module Parameters
     # export parameters
     export α, β, μ, ν, κε
 end 
-using .Parameters, .ModelSolver
+using .Parameters, .MatlabHelpers, .FrechetEstimation, .ModelInverters, .ModelSolver, .Types
 
 # Random Number 
 s = MersenneTwister(1);
@@ -52,31 +44,17 @@ Random.seed!(s);
     analyzing wheter it would lead to model estimates of 
     workforce allocation consistent with 'real world' data.
 "
-# read 1986 data
-fileIn = matopen("./data/input/prepdata_big_TD86.mat");
-dset = read(fileIn); close(fileIn);
-"
-It follows a brief data dictionary:
-----------
-nobs86 = number of observations
-floor86 = rent prices
-empwpl86 = workplace employment (population)
-emprsd86rw = residential employment (population)
-tt86rw = bilateral travel time matrix s.t. rows (i) denote workplaces and columns (j) denote residences
-bzk86rw = mapping of Blocks to Bezirkes
-----------
-"
-Qⱼ = vec(dset["floor86rw"]); Hₘⱼ = vec(dset["empwpl86rw"]) ; Hᵣᵢ = vec(dset["emprsd86rw"]); τᵢⱼ = dset["tt86rw"]'; # using the paper notation
-block_bzk = vec(dset["bzk86rw"]); # map from blocks to districts 
-dset = nothing;
+# read 1986 data (for sure transposing τᵢⱼ)
+Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, block_bzk = read_mat("86");
 
 bzkwge = CSV.read("./data/input/wageworker1986.csv", DataFrame; header = false); # Bezirke (district) raw wage data
-lwⱼ = log.(bzkwge.Column2); # taking log
-lwⱼ = lwⱼ .- mean(lwⱼ); # demean wages
+lwⱼ = @. log(bzkwge.Column2); # taking log
+lwⱼ = @. lwⱼ - $mean(lwⱼ); # demean wages
 Vlwⱼ = var(lwⱼ); # compute variance of log wages, our empirical moment
 
 # computing ω and ε using 86 data
-ε⁼, Ĥₘⱼ, ωⱼ = get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ, su=block_bzk); 
+params = EstimationParameters(α,ν);
+ε⁼, Ĥₘⱼ, ωⱼ = get_ε(Vlwⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ,params, su=block_bzk); 
 const ε = round(ε⁼, digits=2); # rounded for consistency with replication package
 const κ = round(ν/ε,digits=6); # setting commuting decay to reduced-form estimate; rounded for consistency with replication package
 
@@ -106,29 +84,17 @@ GC.gc() # garbage collector (free memory)
     variables to recover the structural parameters that rationalize them.
 "
 
-# read 2006 data
-fileIn = matopen("./data/input/prepdata_big_TD.mat");
-dset = read(fileIn); close(fileIn);
-"
-It follows a brief data dictionary:
-----------
-nobs06 = number of observations
-floor06 = rent prices
-empwpl06 = workplace employment (population)
-emprsd06 = residential employment (population)
-tt06 = bilateral travel time matrix s.t. rows (i) denote workplaces and columns (j) denote residences
-bzk06 = mapping of Blocks to Bezirkes
-area06 = geographical area 
-----------
-"
-Qⱼ = vec(dset["floor06"]); Hₘⱼ = vec(dset["empwpl06"]); Hᵣᵢ = vec(dset["emprsd06"]); τᵢⱼ = dset["tt06"]; Kᵢ = vec(dset["area06"]);
-block_bzk06 = dset["bzk06"]; dset = nothing; 
+# read 2006 data (maybe transposing τᵢⱼ?)
+Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, block_bzk06 = read_mat("06");
+
+# enunciate model parameters
+params = ModelParameters(α, β, κ, ε, μ);
 
 # computing the structural fundamentals of the model SEQUENTIALLY
-Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, φᵢ, Lᵢ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
+Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, φᵢ, Lᵢ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ,params); 
 
 # computing the structural fundamentals of the model SIMULTANEOUSLY
-Ãⱼsim, B̃ᵢsim, w̃ⱼsim, πᵢⱼsim, Tw̃ᵢsim, φᵢsim, Lᵢsim, θᵢsim, H̃ₘⱼsim, H̃ᵣᵢsim, CMAsim = cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); 
+Ãⱼsim, B̃ᵢsim, w̃ⱼsim, πᵢⱼsim, Tw̃ᵢsim, φᵢsim, Lᵢsim, θᵢsim, H̃ₘⱼsim, H̃ᵣᵢsim, CMAsim = cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ,params); 
 
 # sanity check that both algorithms derive the same results
 snty_check_algo = [
@@ -176,8 +142,6 @@ GC.gc() # garbage collector (free memory)
     Notably, we must use the {Ãᵢ,B̃ᵢ,φᵢ} estimates recovered
     in the previous section. 
 "
-# enunciate model parameters
-params = ModelParameters(α, β, κ, ε, μ);
 
 # enunciate exogenous fundamentals of the model
 exo_fund = ExogenousFundamentals(Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ); 
@@ -231,7 +195,7 @@ GC.gc() # garbage collector (free memory)
 # --- What happens if we ban cars in the entire city? --- #
 fileIn = matopen("./data/input/ttpublic_2006_ren.mat");
 dset = read(fileIn); close(fileIn);
-τᵢⱼpub = dset["ttpub06"]; dset = nothing # read counterfactual bilateral travel time matrix
+τᵢⱼpub = Matrix(dset["ttpub06"]'); dset = nothing # read counterfactual bilateral travel time matrix
 
 # enunciate altered exogenous fundamentals of the model
 exo_fund_ctf = ExogenousFundamentals(Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼpub); 
