@@ -16,7 +16,7 @@ It follows a list of what remains to be implemented:
     - [ ] Solve model for endogenous fundamentals;
     - [ ] Implement counterfactuals.
 
-## Notation
+### Notation
 In this replication, I opted for a different approach compared to the one used for the other models. Here, instead of writing the point-wise operations as:
 ```julia
 Y = X .* Z .+ K
@@ -36,7 +36,14 @@ Importantly, the macro tries to broadcast and fuse all operations it contemplate
 @. Y = X * Z + $mean(K)
 ``` 
 
-## References
+### Structure
+In this repository, I changed the folder structure a little. Instead of creating a `functions` folder which I would directly include in the main file, I opted for creating a `modules` folder. This was done precisely because I wanted to start learning how to make modules and properly integrate them in a Julia workflow.
+
+This makes the project much more modular. Since each module clearly declares its own dependencies, the main file stays clean, and 'plucking' logic for other projects becomes a seamless, piece-wise process.
+
+The downside is that the code becomes much more "Julian", in the sense that it becomes a little harder to parse through. If you feel like disregarding this modules approach, I would encourage you to get back to a commit dating from, at most, March 11, 2026. 
+
+### References
 
 Ahlfeldt, G. M. (2024). Toolkit for The Economics of Density: Evidence from the Berlin Wall. https://github.com/Ahlfeldt/ARSW2015-toolkit
 
