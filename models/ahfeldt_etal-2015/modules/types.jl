@@ -1,9 +1,16 @@
 module Types
 
-export ModelParameters, ExogenousFundamentals, PricesGuess, payroll_aggregator_parameters, EstimationParameters
+export ModelParameters, ExogenousFundamentals, PricesGuess, payroll_aggregator_parameters, EstimationParameters, InverterInputs
 
 using SparseArrays
 
+struct InverterInputs
+    Qⱼ::Vector{Float64}
+    Hₘⱼ::Vector{Float64}
+    Hᵣᵢ::Vector{Float64}
+    τᵢⱼ::Matrix{Float64}
+    Kᵢ::Vector{Float64}
+end
 struct ModelParameters
     α::Float64 # Share Of consumption
     β::Float64 # Share Of Labor Costs

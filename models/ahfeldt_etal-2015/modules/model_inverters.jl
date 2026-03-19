@@ -1,12 +1,30 @@
 module ModelInverters
 
-export cal_model_seq, cal_model_sim
+export invert_model
 
 using StatsBase
-using ..Types: ModelParameters, EstimationParameters
+using ..Types: ModelParameters, EstimationParameters, InverterInputs
 using ..FrechetEstimation: get_ω
 
-function cal_model_seq(Qⱼ::Vector{Float64},Hₘⱼ::Vector{Float64},Hᵣᵢ::Vector{Float64},τᵢⱼ::Matrix{Float64},Kᵢ::Vector{Float64},params::ModelParameters; tol_digits::Int=6)
+function invert_model(params::ModelParameters, inputs::InverterInputs;  tol_digits::Int=6, iter_max::Int=1000, method::String="sequential", stop_rule::String="codebook")
+    "
+    This function aggregates both the simultaneous and sequential
+    methods to invert the model, allowing for the option of which
+    one to choose. 
+    "
+    # method checking
+    if method=="sequential"
+        Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(params, inputs; tol_digits=tol_digits, iter_max=iter_max)
+    elseif method =="simultaneous"
+        Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_sim(params, inputs; tol_digits=tol_digits, iter_max=iter_max, stop_rule = stop_rule)
+    else 
+        ErrorException("The model inversion method must be either 'sequential' or 'simultaneous'.")
+    end
+    # return
+    return Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
+end
+
+function cal_model_seq(params::ModelParameters, inputs::InverterInputs; tol_digits::Int=6, iter_max::Int=1000)
     "
     This function assumes that you have predefined the parameters
     ε, κ, α, β, and μ. It then computes the structural fundamentals 
@@ -30,6 +48,7 @@ function cal_model_seq(Qⱼ::Vector{Float64},Hₘⱼ::Vector{Float64},Hᵣᵢ::V
     "
     # Unpacking parameters
     (; α, β, κ, ε, μ) = params; ν = κ * ε;
+    (; Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, Kᵢ) = inputs;
 
     # Identifying places with firms and residents
     pos_employment = vec(Hₘⱼ.>0); pos_residence = vec(Hᵣᵢ.>0); 
@@ -41,7 +60,7 @@ function cal_model_seq(Qⱼ::Vector{Float64},Hₘⱼ::Vector{Float64},Hᵣᵢ::V
     # **************************************************
     
     # computing transformed wages (ωⱼ) array
-    ωⱼ, Ĥₘⱼ = get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ,EstimationParameters(α,ν), tol_digits=tol_digits, ε=ε); 
+    ωⱼ, Ĥₘⱼ = get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ,EstimationParameters(α,ν), tol_digits=tol_digits, x_max=iter_max, ε=ε); 
     w̃ⱼ = @. ωⱼ ^ (1 / ε);  # recover adjusted wages by remembering that w̃ⱼ = ω^(1/ε) = wⱼEⱼ^(1/ε)
     @. w̃ⱼ[w̃ⱼ .> 0] = w̃ⱼ[w̃ⱼ .> 0] / $geomean(w̃ⱼ[w̃ⱼ .> 0]); # normalizing adjusted wages
     
@@ -64,9 +83,9 @@ function cal_model_seq(Qⱼ::Vector{Float64},Hₘⱼ::Vector{Float64},Hᵣᵢ::V
     CMAᵃ = @. CMA[pos_residence] / $geomean(CMA[pos_residence]); 
     @. B̃ᵢ[pos_residence] = (Hᵣᵢᵃ)^(1/ε) * (Qⱼᵃ)^(1-β) * (CMAᵃ)^(-1/ε) ;
     
-    # *******************************************************************
-    # *** Rescaling Ãⱼ, B̃ᵢ, and computing  πᵢⱼ (commuting flow prob.) ***
-    # *******************************************************************
+    # ***************************************************************************
+    # *** Rescaling Ãⱼ, B̃ᵢ, w̃ⱼ, CMA and computing  πᵢⱼ (commuting flow prob.) ***
+    # ***************************************************************************
         
     # Normalize productivity to geomean 1
     @. Ãⱼ[pos_employment] = Ãⱼ[pos_employment] / $geomean(Ãⱼ[pos_employment]);
@@ -129,7 +148,7 @@ function cal_model_seq(Qⱼ::Vector{Float64},Hₘⱼ::Vector{Float64},Hᵣᵢ::V
     return Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end
 
-function cal_model_sim(Qⱼ::Vector{Float64},Hₘⱼ::Vector{Float64},Hᵣᵢ::Vector{Float64},τᵢⱼ::Matrix{Float64},Kᵢ::Vector{Float64},params::ModelParameters; tol_digits::Int=6, iter_max::Int=1000)
+function cal_model_sim(params::ModelParameters, inputs::InverterInputs; tol_digits::Int=6, iter_max::Int=1000, stop_rule::String = "codebook")
     "
     This function assumes that you have predefined the parameters
     ε, κ, α, β, and μ. It then computes the structural fundamentals 
@@ -146,12 +165,18 @@ function cal_model_sim(Qⱼ::Vector{Float64},Hₘⱼ::Vector{Float64},Hᵣᵢ::V
     endogenous variables of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, 
     H̃ₘⱼ, H̃ᵣᵢ, CMA) that are consistent with the observed equilibrium.
     --- IGNORE ---
-    This function solves for the equilibrium of the model by simultaneously
-    iterating over guesses of Ãⱼ and B̃ᵢ up until convergence is achieved.
+    1.  This function solves for the equilibrium of the model by simultaneously
+        iterating over guesses of Ãⱼ and B̃ᵢ up until convergence is achieved.
+    2.  The `stop_rule` argument indicates which convergence rule to use. If
+        'codebook' is the chosen one, it will converge based on changes in
+        Ãⱼ and B̃ᵢ, as stated in the codebook. Otherwise, it will update as
+        does the `cmodexog.m` function, that is, based on changes in 
+        abs(Hₘⱼ-H̃ₘⱼ) and abs(Hᵣᵢ-H̃ᵣᵢ).
     "
     # Unpacking parameters
     (; α, β, κ, ε, μ) = params;
-    
+    (; Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, Kᵢ) = inputs;
+
     # Identifying places with firms and residents
     pos_employment = vec(Hₘⱼ.>0); pos_residence = vec(Hᵣᵢ.>0); 
     idx_emp = findall(pos_employment); idx_res = findall(pos_residence);
@@ -211,8 +236,10 @@ function cal_model_sim(Qⱼ::Vector{Float64},Hₘⱼ::Vector{Float64},Hᵣᵢ::V
 
         # Update iteration variables
         iter += 1; 
-        err_Ãⱼ = @. $round($maximum(abs(Ãⱼ1 - Ãⱼ0)),digits=tol_digits); 
-        err_B̃ᵢ = @. $round($maximum(abs(B̃ᵢ1 - B̃ᵢ0)),digits=tol_digits);
+        stop_rule == "codebook" ? Ãⱼ_gap = abs.(Ãⱼ1 .- Ãⱼ0) : Ãⱼ_gap = abs.(H̃ₘⱼ .- Hₘⱼ);
+        stop_rule == "codebook" ? B̃ᵢ_gap = abs.(B̃ᵢ1 .- B̃ᵢ0) : B̃ᵢ_gap = abs.(H̃ᵣᵢ .- Hᵣᵢ);
+        err_Ãⱼ = round(maximum(Ãⱼ_gap),digits=tol_digits); 
+        err_B̃ᵢ = round(maximum(B̃ᵢ_gap),digits=tol_digits);
 
         # Print convergence rate
         println([iter, trunc(err_Ãⱼ / tol, digits=0), trunc(err_B̃ᵢ / tol, digits=0)])

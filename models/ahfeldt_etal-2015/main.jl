@@ -1,7 +1,7 @@
 # *********************
 # **** Load Files  **** 
 # *********************
-using  LaTeXStrings, FixedEffectModels, CSV, DataFrames, Statistics, Random, BenchmarkTools 
+using  LaTeXStrings, FixedEffectModels, CSV, DataFrames, Statistics, Random, BenchmarkTools, MAT 
 
 try 
     cd("/home/phchavesmaia/Dropbox/learn-julia/qse/models/ahfeldt_etal-2015")
@@ -45,8 +45,8 @@ Random.seed!(s);
     analyzing wheter it would lead to model estimates of 
     workforce allocation consistent with 'real world' data.
 "
-# read 1986 data (for sure transposing τᵢⱼ)
-Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, block_bzk = read_mat("86");
+# read 1986 data
+Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, Kᵢ, block_bzk = read_mat("86");
 
 bzkwge = CSV.read("./data/input/wageworker1986.csv", DataFrame; header = false); # Bezirke (district) raw wage data
 lwⱼ = @. log(bzkwge.Column2); # taking log
@@ -85,17 +85,18 @@ GC.gc() # garbage collector (free memory)
     variables to recover the structural parameters that rationalize them.
 "
 
-# read 2006 data (maybe transposing τᵢⱼ?)
-Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, block_bzk06 = read_mat("06");
+# read 2006 data 
+Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, Kᵢ, block_bzk06 = read_mat("06");
 
 # enunciate model parameters
 params = ModelParameters(α, β, κ, ε, μ);
+inputs = InverterInputs(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ);
 
 # computing the structural fundamentals of the model SEQUENTIALLY
-Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, φᵢ, Lᵢ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ,params); 
+Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, φᵢ, Lᵢ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = invert_model(params, inputs); 
 
 # computing the structural fundamentals of the model SIMULTANEOUSLY
-Ãⱼsim, B̃ᵢsim, w̃ⱼsim, πᵢⱼsim, Tw̃ᵢsim, φᵢsim, Lᵢsim, θᵢsim, H̃ₘⱼsim, H̃ᵣᵢsim, CMAsim = cal_model_sim(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ,params); 
+Ãⱼsim, B̃ᵢsim, w̃ⱼsim, πᵢⱼsim, Tw̃ᵢsim, φᵢsim, Lᵢsim, θᵢsim, H̃ₘⱼsim, H̃ᵣᵢsim, CMAsim = invert_model(params, inputs, method="simultaneous", stop_rule="matlab"); 
 
 # sanity check that both algorithms derive the same results
 snty_check_algo = [
@@ -196,13 +197,13 @@ GC.gc() # garbage collector (free memory)
 # --- What happens if we ban cars in the entire city? --- #
 fileIn = matopen("./data/input/ttpublic_2006_ren.mat");
 dset = read(fileIn); close(fileIn);
-τᵢⱼpub = Matrix(dset["ttpub06"]'); dset = nothing # read counterfactual bilateral travel time matrix
+τᵢⱼpub = Matrix(dset["ttpub06"]); dset = nothing # read counterfactual bilateral travel time matrix
 
 # enunciate altered exogenous fundamentals of the model
 exo_fund_ctf = ExogenousFundamentals(Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼpub); 
 
 # estimate alternative CLOSED-CITY equilibrium
-Qⱼpub, w̃ⱼpub, θᵢpub, πᵢⱼpub, Ūpub = solve_equilibrium(params, exo_fund_ctf, H, closed_city = true, prices_guess = prices_guess, tol_digits=2);
+Qⱼpub, w̃ⱼpub, θᵢpub, πᵢⱼpub, Ūpub = solve_equilibrium(params, exo_fund_ctf, H, closed_city = true, prices_guess = prices_guess, tol_digits=2, damp_fact=.4);
 println("The welfare change from banning cars would be of: $(round(100*(Ūpub-Ūeq)/Ūeq,digits=2))%")
 
 # estimate alternative OPEN-CITY equilibrium

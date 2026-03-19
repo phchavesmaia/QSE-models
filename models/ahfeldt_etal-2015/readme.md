@@ -1,6 +1,6 @@
 # Ahfeldt et al. (2015)
 
-The goal of this folder is to replicate the canonical QSE model from Ahlfeldt et al. (2015) using Julia, based on the Matlab Toolkit by Ahlfeldt (2024). To download the .mat files, please refer to Ahlfeldt (2024).
+The goal of this folder is to replicate the canonical QSE model from Ahlfeldt et al. (2015) using Julia, based on the Matlab Toolkit by Ahlfeldt (2024). To download the .mat files, please refer to Ahlfeldt (2024). Importantly, I renamed `prepdata_big_TD.mat` to `prepdata_big_TD06.mat` to make it easier for the helping import functions.
 
 Since `GeoIO.jl' doesn't support EPSG:3068, I reproject the data to EPSG:3035 using QGIS to ensure a seamless workflow. These altered data are the shapefiles with "1" at the end of their names.
 

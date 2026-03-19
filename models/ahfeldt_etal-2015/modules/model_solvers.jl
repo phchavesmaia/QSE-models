@@ -5,7 +5,7 @@ using ..Types: ModelParameters, ExogenousFundamentals, PricesGuess
 
 export solve_equilibrium
 
-function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundamentals, pop_uti::Float64; prices_guess::Union{PricesGuess, Nothing} = nothing, tol_digits::Int=3, iter_max::Int=1000, damp_fact::Float64 = 0.5, closed_city::Bool=true)
+function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundamentals, pop_uti::Float64; prices_guess::Union{PricesGuess, Nothing} = nothing, tol_digits::Int=3, iter_max::Int=1000, damp_fact::Float64 = 0.4, closed_city::Bool=true)
     "
         This function assumes that you have predefined the parameters
         {α, β, κ, ε, and μ}. It then solves for the general equilibrium 
@@ -41,8 +41,8 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
     (; Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ) = exo_fund;
 
     # separate last argument between the open- and closed-city cases
-    H̃ = closed_city ? pop_uti : 1;
-    Ū = closed_city ? 1 : pop_uti;   
+    H̃ = closed_city ? copy(pop_uti) : 1;
+    Ū = closed_city ? 1 : copy(pop_uti);   
 
     # positional variables
     pos_employment = vec(Ãⱼ.>0) ; pos_residence = vec(B̃ᵢ.>0);
@@ -53,7 +53,8 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
     shared_space = @. (Ãⱼ>0) & (B̃ᵢ>0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
 
     # initial guess for the equilibrium prices of the model
-    (; Qⱼ0, w̃ⱼ0, θᵢ0) = isnothing(prices_guess) ? PricesGuess(n_places, pure_res, shared_space) : prices_guess
+    pg = isnothing(prices_guess) ? PricesGuess(n_places, pure_res, shared_space) : prices_guess
+    Qⱼ0 = copy(pg.Qⱼ0); w̃ⱼ0 = copy(pg.w̃ⱼ0); θᵢ0 = copy(pg.θᵢ0);
 
     # initializing variables to be updated in the loop
     Qⱼ1 = zeros(n_places); w̃ⱼ1 = zeros(n_places);
@@ -114,7 +115,7 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
         @. Qⱼ1[shared_space] = (((1-α) * Ỹⱼ[shared_space]) + ((1-β) * Ew̃ᵢ[shared_space] * H̃ᵣᵢ[shared_space])) / Lᵢ[shared_space]; # akin to: θ * Qⱼ1[pure_emp] + (1-θ) * Qⱼ1[pure_res]
 
         # --- θᵢ through eq. 10 (CPO wrt Lₘ, i.e., S.23) + S.53 --- PS.: my understanding is that since Lᵢ is exogenous, S.53 guarantees a market-clearing equilibrium.
-        @. Lₘⱼ[pos_employment] = (1-α) * Ỹⱼ[pos_employment] / Qⱼ0[pos_employment]; # you could maybe use S.49 here?!
+        @. Lₘⱼ[pos_employment] = (1-α) * Ỹⱼ[pos_employment] / Qⱼ0[pos_employment]; # why could you not use S.49 here? Maybe because I have H̃ⱼ instead of Hⱼ... 
         @. θᵢ1[shared_space] = Lₘⱼ[shared_space] / (Lᵢ[shared_space]);
 
         # update error metrics here
@@ -140,11 +141,7 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
     end
 
     # Return the equilibrium endogenous variables 
-    if closed_city
-        return Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, Ū
-    else
-        return Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, H̃
-    end
+    return closed_city ? (Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, Ū) : (Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, H̃)
 end
 
 end

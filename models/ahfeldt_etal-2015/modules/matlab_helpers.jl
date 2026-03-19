@@ -30,6 +30,8 @@ function mapit(path_from::String, data::Vector{Float64}, title::String; path_to:
 end
 
 function read_mat(year::String, path::String="./data/input")
+
+    # read data
     fileIn = matopen("$(path)/prepdata_big_TD$year.mat");
     dset = read(fileIn); close(fileIn);
     "
@@ -38,15 +40,32 @@ function read_mat(year::String, path::String="./data/input")
     nobsXX = number of observations
     floorXX = rent prices
     empwplXX = workplace employment (population)
-    emprsdXXrw = residential employment (population)
-    tt86rXX = bilateral travel time matrix s.t. rows (i) denote workplaces and columns (j) denote residences; which I transpose.
+    emprsdXX = residential employment (population)
+    ttXX = bilateral travel time matrix 
+        τᵢⱼ is constructed on top of ttXX s.t. rows (i) denote residences and columns (j) denote workplaces.
     bzk86XX = mapping of Blocks to Bezirkes
     ----------
     "
-    Qⱼ = vec(dset["floor$(year)rw"]); Hₘⱼ = vec(dset["empwpl$(year)rw"]) ; Hᵣᵢ = vec(dset["emprsd$(year)rw"]); τᵢⱼ = Matrix(dset["tt$(year)rw"]'); # using the paper notation
-    block_bzk = vec(Int.(dset["bzk$(year)rw"])); # map from blocks to districts 
+    
+    # defining suffix
+    year=="86" ? suffix = "rw" : suffix="";
+    
+    # importing variables
+    Qⱼ = vec(dset["floor$(year)$(suffix)"]); Hₘⱼ = vec(dset["empwpl$(year)$(suffix)"]) ; Hᵣᵢ = vec(dset["emprsd$(year)$(suffix)"]); # using the paper notation
+    
+    # distvar transposition (see https://github.com/Ahlfeldt/ARSW2015-toolkit/pull/2/changes/7068bddce63553eb9fb645d5f839ee4c17fbf9f9 for the argument for the transposition)  
+    year=="86" ? τᵢⱼ = Matrix(dset["tt$(year)$(suffix)"]') : τᵢⱼ = dset["tt$(year)$(suffix)"];
+
+    # area
+    year=="86" ? Kᵢ = nothing : Kᵢ = vec(dset["area06"]);
+
+    # block map
+    block_bzk = vec(Int.(dset["bzk$(year)$(suffix)"])); # map from blocks to districts
+
+    # close data
     dset = nothing;
-    return Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, block_bzk
+    
+    return Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, Kᵢ, block_bzk
 end
 
 end
