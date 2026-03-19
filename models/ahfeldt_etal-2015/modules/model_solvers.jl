@@ -69,8 +69,8 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
     
     # defining loop variables
     iter = 0; tol = 10.0^(-tol_digits);
-    err_Q = 10000; err_w = 10000; err_θ = 10000;
-    
+    err_Q = 1; err_w = 1; err_θ = 1; err_pop_uti = 1;
+
     # other variables 
     dᵢⱼ = @. exp(κ*τᵢⱼ[idx_res,idx_emp]); # by assumption
     Lᵢ = @. φᵢ * Kᵢ^(1-μ); # eq. 19
@@ -82,7 +82,7 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
         println(">>>> Solving the open-city equilibrium <<<<")
     end
 
-    while ((err_Q >= tol) || (err_w >= tol) || (err_θ >= tol)) && (iter <= iter_max)
+    while ((err_Q >= tol) || (err_w >= tol) || (err_θ >= tol) || (err_pop_uti >= tol)) && (iter <= iter_max)
         # updating endogenous variables by solving the model equations
 
         # --- πᵢⱼ through eq. 4 ---
@@ -123,25 +123,28 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
         err_Q = @. $round($maximum(abs(Qⱼ1 - Qⱼ0)),digits=tol_digits); 
         err_w = @. $round($maximum(abs(w̃ⱼ1 - w̃ⱼ0)),digits=tol_digits); 
         err_θ = @. $round($maximum(abs(θᵢ1 - θᵢ0)),digits=tol_digits); 
+        closed_city ? (err_pop_uti = round(abs(Φ/H̃-1),digits=tol_digits)) : (err_pop_uti = round(abs(Ūcity/Ū-1),digits=tol_digits)); # not checking for convergency, but for consistency w/ the data
 
-        # revise guesses (safer damping; otherwise it 'bounces' a lot)
+        # revise guesses
         @. Qⱼ0 = (1-damp_fact) * Qⱼ0 + damp_fact * Qⱼ1 ;
         @. w̃ⱼ0 = (1-damp_fact) * w̃ⱼ0 + damp_fact * w̃ⱼ1 ;
         @. θᵢ0 = (1-damp_fact) * θᵢ0 + damp_fact * θᵢ1 ;
 
         # Print convergence rate
-        println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0)])
+        println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0), trunc(err_pop_uti / tol, digits=0)]);
     end
     
     # Print status
-    if iter < iter_max
-        println(">>>> Equilibrium achieved! <<<<")
-    else
-        println(">>>> Failed to find an equilibrium <<<<")
-    end
+    (iter < iter_max) ? println(">>>> Equilibrium achieved! <<<<") : println(">>>> Failed to find an equilibrium <<<<")
 
     # Return the equilibrium endogenous variables 
     return closed_city ? (Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, Ū) : (Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, H̃)
+end
+
+
+function endogenous()
+
+
 end
 
 end

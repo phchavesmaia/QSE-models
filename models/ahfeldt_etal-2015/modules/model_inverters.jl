@@ -6,7 +6,7 @@ using StatsBase
 using ..Types: ModelParameters, EstimationParameters, InverterInputs
 using ..FrechetEstimation: get_ω
 
-function invert_model(params::ModelParameters, inputs::InverterInputs;  tol_digits::Int=6, iter_max::Int=1000, method::String="sequential", stop_rule::String="codebook")
+function invert_model(params::ModelParameters, inputs::InverterInputs;  tol_digits::Int=6, iter_max::Int=1000, method::String="sequential", stop_rule::String="codebook", damp_fact::Float64 = 0.5)
     "
     This function aggregates both the simultaneous and sequential
     methods to invert the model, allowing for the option of which
@@ -14,9 +14,9 @@ function invert_model(params::ModelParameters, inputs::InverterInputs;  tol_digi
     "
     # method checking
     if method=="sequential"
-        Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(params, inputs; tol_digits=tol_digits, iter_max=iter_max)
+        Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(params, inputs; tol_digits=tol_digits, iter_max=iter_max, damp_fact=damp_fact)
     elseif method =="simultaneous"
-        Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_sim(params, inputs; tol_digits=tol_digits, iter_max=iter_max, stop_rule = stop_rule)
+        Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_sim(params, inputs; tol_digits=tol_digits, iter_max=iter_max, stop_rule = stop_rule, damp_fact=damp_fact)
     else 
         ErrorException("The model inversion method must be either 'sequential' or 'simultaneous'.")
     end
@@ -24,7 +24,7 @@ function invert_model(params::ModelParameters, inputs::InverterInputs;  tol_digi
     return Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end
 
-function cal_model_seq(params::ModelParameters, inputs::InverterInputs; tol_digits::Int=6, iter_max::Int=1000)
+function cal_model_seq(params::ModelParameters, inputs::InverterInputs; tol_digits::Int=6, iter_max::Int=1000, damp_fact::Float64 = 0.5)
     "
     This function assumes that you have predefined the parameters
     ε, κ, α, β, and μ. It then computes the structural fundamentals 
@@ -60,7 +60,7 @@ function cal_model_seq(params::ModelParameters, inputs::InverterInputs; tol_digi
     # **************************************************
     
     # computing transformed wages (ωⱼ) array
-    ωⱼ, Ĥₘⱼ = get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ,EstimationParameters(α,ν), tol_digits=tol_digits, x_max=iter_max, ε=ε); 
+    ωⱼ, Ĥₘⱼ = get_ω(Hₘⱼ,Hᵣᵢ,τᵢⱼ,Qⱼ,EstimationParameters(α,ν), tol_digits=tol_digits, x_max=iter_max, ε=ε, damp_fact=damp_fact); 
     w̃ⱼ = @. ωⱼ ^ (1 / ε);  # recover adjusted wages by remembering that w̃ⱼ = ω^(1/ε) = wⱼEⱼ^(1/ε)
     @. w̃ⱼ[w̃ⱼ .> 0] = w̃ⱼ[w̃ⱼ .> 0] / $geomean(w̃ⱼ[w̃ⱼ .> 0]); # normalizing adjusted wages
     
@@ -148,7 +148,7 @@ function cal_model_seq(params::ModelParameters, inputs::InverterInputs; tol_digi
     return Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end
 
-function cal_model_sim(params::ModelParameters, inputs::InverterInputs; tol_digits::Int=6, iter_max::Int=1000, stop_rule::String = "codebook")
+function cal_model_sim(params::ModelParameters, inputs::InverterInputs; tol_digits::Int=6, iter_max::Int=1000, stop_rule::String = "codebook", damp_fact::Float64 = 0.5)
     "
     This function assumes that you have predefined the parameters
     ε, κ, α, β, and μ. It then computes the structural fundamentals 
@@ -225,8 +225,8 @@ function cal_model_sim(params::ModelParameters, inputs::InverterInputs; tol_digi
         end
         
         # Damping the updates to improve stability (I will follow ARSW toolkit and use a 0.5 damping factor, even if 0.75/0.25 should be safer)
-        @. Ãⱼ0 = 0.5 * Ãⱼ0 + 0.5 * Ãⱼ1 ;
-        @. B̃ᵢ0 = 0.5 * B̃ᵢ0 + 0.5 * B̃ᵢ1 ;
+        @. Ãⱼ0 = (1-damp_fact) * Ãⱼ0 + damp_fact * Ãⱼ1 ;
+        @. B̃ᵢ0 = (1-damp_fact) * B̃ᵢ0 + damp_fact * B̃ᵢ1 ;
 
         # Normalizing productivity to geomean 1
         @. Ãⱼ0[pos_employment] = Ãⱼ0[pos_employment] / $geomean(Ãⱼ0[pos_employment]);

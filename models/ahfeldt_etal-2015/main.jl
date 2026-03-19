@@ -1,7 +1,7 @@
 # *********************
 # **** Load Files  **** 
 # *********************
-using  LaTeXStrings, FixedEffectModels, CSV, DataFrames, Statistics, Random, BenchmarkTools, MAT 
+using  Revise, FixedEffectModels, CSV, DataFrames, Statistics, Random, BenchmarkTools, MAT 
 
 try 
     cd("/home/phchavesmaia/Dropbox/learn-julia/qse/models/ahfeldt_etal-2015")
@@ -18,8 +18,8 @@ include("./modules/model_solvers.jl")
 # *** Setting parameters ***
 # **************************
 
-# define model parameters
-module Parameters
+# define model parameters 
+module BaseParameters
     # Set parameter values to values from the literature
     const α=0.80; 
     const β=0.75; 
@@ -30,7 +30,7 @@ module Parameters
     export α, β, μ, ν, κε
 end 
 
-using .Parameters, .Types, .MatlabHelpers, .FrechetEstimation, .ModelInverters, .ModelSolver
+using .BaseParameters, .Types, .MatlabHelpers, .FrechetEstimation, .ModelInverters, .ModelSolver
 
 # Random Number 
 s = MersenneTwister(1);
@@ -152,7 +152,7 @@ exo_fund = ExogenousFundamentals(Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ);
 prices_guess = PricesGuess(Qⱼ, w̃ⱼ, θᵢ); 
 
 # solve the CLOSED-CITY equilibrium using data/model-consistent initial guesses
-H = sum(Hᵣᵢ);
+const H = sum(Hᵣᵢ);
 Qⱼeq, w̃ⱼeq, θᵢeq, πᵢⱼeq, Ūeq = solve_equilibrium(params, exo_fund, H, closed_city = true, prices_guess = prices_guess);
 
 # validating the CLOSED-CITY equilibrium variables with real data
@@ -164,7 +164,7 @@ snty_check_eq_closed = [
 println("Does this CLOSED-CITY equilibrium match the data? $(sum(snty_check_eq_closed)==length(snty_check_eq_closed))")
 
 # solve THE OPEN-CITY equilibrium using data/model-consistent initial guesses
-Qⱼeq_open, w̃ⱼeq_open, θᵢeq_open, πᵢⱼeq_open, H̃eq_open = solve_equilibrium(params, exo_fund, Ūeq, closed_city = false, prices_guess = prices_guess);
+Qⱼeq_open, w̃ⱼeq_open, θᵢeq_open, πᵢⱼeq_open, H̃eq_open = solve_equilibrium(params, exo_fund, Ūeq, closed_city = false, prices_guess = prices_guess, damp_fact = 0.2);
 
 # validating the OPEN-CITY equilibrium variables with real data
 snty_check_eq_open = [
@@ -203,10 +203,39 @@ dset = read(fileIn); close(fileIn);
 exo_fund_ctf = ExogenousFundamentals(Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼpub); 
 
 # estimate alternative CLOSED-CITY equilibrium
-Qⱼpub, w̃ⱼpub, θᵢpub, πᵢⱼpub, Ūpub = solve_equilibrium(params, exo_fund_ctf, H, closed_city = true, prices_guess = prices_guess, tol_digits=2, damp_fact=.4);
+Qⱼpub, w̃ⱼpub, θᵢpub, πᵢⱼpub, Ūpub = solve_equilibrium(params, exo_fund_ctf, H, closed_city = true, prices_guess = prices_guess, tol_digits=2);
 println("The welfare change from banning cars would be of: $(round(100*(Ūpub-Ūeq)/Ūeq,digits=2))%")
 
 # estimate alternative OPEN-CITY equilibrium
 Qⱼpub_open, w̃ⱼpub_open, θᵢpub_open, πᵢⱼpub_open, H̃pub = solve_equilibrium(params, exo_fund_ctf, Ūeq, closed_city = false, prices_guess = prices_guess, tol_digits=2);
 println("The population change from banning cars would be of: $(round(100*(H̃pub/H-1),digits=2))%")
+
+# **********************************************************
+# *** Solving 2006 equilibrium (endogenous fundamentals) *** 
+# **********************************************************
+
+GC.gc() # garbage collector (free memory)
+
+# Model parameters from GMM joint estimation
+module EndogenousParameters
+    using MAT
+
+    export νᵉ, εᵉ, κᵉ, λ, δ, η, ρ
+
+    fileIn = matopen("./data/input/roptimis_all_big.mat");
+    dset = read(fileIn); close(fileIn);
+    const νᵉ=dset["EThetaA"][1]; 
+    const εᵉ=dset["EThetaA"][2];
+    const κᵉ=νᵉ/εᵉ; 
+    const λ=dset["EThetaA"][3];
+    const δ=dset["EThetaA"][4]; 
+    const η=dset["EThetaA"][5];
+    const ρ=dset["EThetaA"][6]; 
+    dset = nothing;
+end 
+using .EndogenousParameters
+
+# Invert (calibrate) the model for the new parameters
+paramsᵉ = ModelParameters(α, β, κᵉ, εᵉ, μ);
+Ãⱼᵉ, B̃ᵢᵉ, w̃ⱼᵉ, πᵢⱼᵉ, Tw̃ᵢᵉ, φᵢᵉ, Lᵢᵉ, θᵢᵉ, H̃ₘⱼᵉ, H̃ᵣᵢᵉ, CMAᵉ = invert_model(paramsᵉ, inputs); 
 

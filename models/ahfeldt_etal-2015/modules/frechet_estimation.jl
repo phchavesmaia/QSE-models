@@ -5,7 +5,7 @@ export get_ω, get_ε
 using SparseArrays, Optimization, OptimizationNLopt, StatsBase, Statistics, LinearAlgebra
 using ..Types: EstimationParameters, payroll_aggregator_parameters
 
-function get_ω(Hₘⱼ::Vector{Float64},Hᵣᵢ::Vector{Float64},τᵢⱼ::Matrix{Float64},Qⱼ::Vector{Float64},params::EstimationParameters; tol_digits::Int=6, x_max::Int = 500, ε::Float64 = 1.0)
+function get_ω(Hₘⱼ::Vector{Float64},Hᵣᵢ::Vector{Float64},τᵢⱼ::Matrix{Float64},Qⱼ::Vector{Float64},params::EstimationParameters; tol_digits::Int=6, x_max::Int = 500, ε::Float64 = 1.0, damp_fact::Float64 = 0.5)
     "
     This function solves for TRANSFORMED wages (ωⱼ) for given values of
     workplace employment, residence employment, and bilateral commuting
@@ -47,7 +47,7 @@ function get_ω(Hₘⱼ::Vector{Float64},Hᵣᵢ::Vector{Float64},τᵢⱼ::Matr
         # Update ω guess
         @. ωⱼ1 = ωⱼ0 * (Hₘⱼ / Ĥₘⱼ0) ;
         # Apply damping to improve stability (I will follow ARSW and use a 0.5 damping factor, even if 0.75/0.25 should be safer)
-        @. ωⱼ0 = 0.5 * ωⱼ0 + 0.5 * ωⱼ1 ;
+        @. ωⱼ0 = (1-damp_fact) * ωⱼ0 + damp_fact * ωⱼ1 ;
         # Normalize wages to ensure geomean(ωⱼ) = 1
         @. ωⱼ0 = ωⱼ0 ./ $geomean(ωⱼ0);
         # Print convergence rate
