@@ -47,7 +47,7 @@ function cal_model_seq(params::ModelParameters, inputs::InverterInputs; tol_digi
     (re)scaled to match the data.
     "
     # Unpacking parameters
-    (; α, β, κ, ε, μ) = params; ν = κ * ε;
+    (; α, β, μ, κ, ε) = params; ν = κ * ε;
     (; Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, Kᵢ) = inputs;
 
     # Identifying places with firms and residents
@@ -174,7 +174,7 @@ function cal_model_sim(params::ModelParameters, inputs::InverterInputs; tol_digi
         abs(Hₘⱼ-H̃ₘⱼ) and abs(Hᵣᵢ-H̃ᵣᵢ).
     "
     # Unpacking parameters
-    (; α, β, κ, ε, μ) = params;
+    (; α, β, μ, κ, ε) = params;
     (; Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, Kᵢ) = inputs;
 
     # Identifying places with firms and residents

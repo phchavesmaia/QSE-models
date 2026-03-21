@@ -1,22 +1,30 @@
 module Types
 
-export ModelParameters, ExogenousFundamentals, PricesGuess, payroll_aggregator_parameters, EstimationParameters, InverterInputs
+export EndogenousModelParameters, ModelParameters, ExogenousFundamentals, PricesGuess, payroll_aggregator_parameters, EstimationParameters, InverterInputs
 
 using SparseArrays
 
 struct InverterInputs
-    Qⱼ::Vector{Float64}
-    Hₘⱼ::Vector{Float64}
-    Hᵣᵢ::Vector{Float64}
-    τᵢⱼ::Matrix{Float64}
-    Kᵢ::Vector{Float64}
+    Qⱼ::Vector{Float64} # rent prices
+    Hₘⱼ::Vector{Float64} # workplace employment
+    Hᵣᵢ::Vector{Float64} # residence employment
+    τᵢⱼ::Matrix{Float64} # travel time matrix
+    Kᵢ::Vector{Float64} # geographical area
 end
+
+struct EndogenousModelParameters
+    λ::Float64 # Relative importance of production externalities in overall productivity.
+    δ::Float64 # Rate of spatial decay (productivity) 
+    η::Float64 # Net effect of residence employment density on amenities
+    ρ::Float64 # Rate of spatial decay (amenities)
+end
+
 struct ModelParameters
     α::Float64 # Share Of consumption
     β::Float64 # Share Of Labor Costs
+    μ::Float64 # Share Of Capital In Construction Costs
     κ::Float64 # Size Of Commuting Costs
     ε::Float64 # Fréchet Shape Parameter
-    μ::Float64 # Share Of Capital In Construction Costs
 end
 
 struct ExogenousFundamentals
@@ -50,8 +58,8 @@ struct payroll_aggregator_parameters
 end
 
 struct EstimationParameters
-    α::Float64
-    ν::Float64
+    α::Float64 # Share Of consumption
+    ν::Float64 #  ν = εκ is the semi-elasticity of commuting flows wrt travel times
 end
 
 end

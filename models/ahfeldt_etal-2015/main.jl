@@ -89,7 +89,7 @@ GC.gc() # garbage collector (free memory)
 Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, Kᵢ, block_bzk06 = read_mat("06");
 
 # enunciate model parameters
-params = ModelParameters(α, β, κ, ε, μ);
+params = ModelParameters(α, β, μ, κ, ε);
 inputs = InverterInputs(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ);
 
 # computing the structural fundamentals of the model SEQUENTIALLY
@@ -153,7 +153,8 @@ prices_guess = PricesGuess(Qⱼ, w̃ⱼ, θᵢ);
 
 # solve the CLOSED-CITY equilibrium using data/model-consistent initial guesses
 const H = sum(Hᵣᵢ);
-Qⱼeq, w̃ⱼeq, θᵢeq, πᵢⱼeq, Ūeq = solve_equilibrium(params, exo_fund, H, closed_city = true, prices_guess = prices_guess);
+Qⱼeq, w̃ⱼeq, θᵢeq, πᵢⱼeq, Ūeq = solve_equilibrium(params, exo_fund, H, closed_city = true, 
+                                                    prices_guess = prices_guess);
 
 # validating the CLOSED-CITY equilibrium variables with real data
 snty_check_eq_closed = [
@@ -164,7 +165,8 @@ snty_check_eq_closed = [
 println("Does this CLOSED-CITY equilibrium match the data? $(sum(snty_check_eq_closed)==length(snty_check_eq_closed))")
 
 # solve THE OPEN-CITY equilibrium using data/model-consistent initial guesses
-Qⱼeq_open, w̃ⱼeq_open, θᵢeq_open, πᵢⱼeq_open, H̃eq_open = solve_equilibrium(params, exo_fund, Ūeq, closed_city = false, prices_guess = prices_guess, damp_fact = 0.2);
+Qⱼeq_open, w̃ⱼeq_open, θᵢeq_open, πᵢⱼeq_open, H̃eq_open = solve_equilibrium(params, exo_fund, Ūeq, closed_city = false, 
+                                                                            prices_guess = prices_guess, damp_fact = 0.2);
 
 # validating the OPEN-CITY equilibrium variables with real data
 snty_check_eq_open = [
@@ -203,11 +205,15 @@ dset = read(fileIn); close(fileIn);
 exo_fund_ctf = ExogenousFundamentals(Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼpub); 
 
 # estimate alternative CLOSED-CITY equilibrium
-Qⱼpub, w̃ⱼpub, θᵢpub, πᵢⱼpub, Ūpub = solve_equilibrium(params, exo_fund_ctf, H, closed_city = true, prices_guess = prices_guess, tol_digits=2);
+Qⱼpub, w̃ⱼpub, θᵢpub, πᵢⱼpub, Ūpub = solve_equilibrium(params, exo_fund_ctf, H, closed_city = true, 
+                                                        prices_guess = prices_guess, 
+                                                        tol_digits=2);
 println("The welfare change from banning cars would be of: $(round(100*(Ūpub-Ūeq)/Ūeq,digits=2))%")
 
 # estimate alternative OPEN-CITY equilibrium
-Qⱼpub_open, w̃ⱼpub_open, θᵢpub_open, πᵢⱼpub_open, H̃pub = solve_equilibrium(params, exo_fund_ctf, Ūeq, closed_city = false, prices_guess = prices_guess, tol_digits=2);
+Qⱼpub_open, w̃ⱼpub_open, θᵢpub_open, πᵢⱼpub_open, H̃pub = solve_equilibrium(params, exo_fund_ctf, Ūeq, closed_city = false, 
+                                                                            prices_guess = prices_guess, 
+                                                                            tol_digits=2);
 println("The population change from banning cars would be of: $(round(100*(H̃pub/H-1),digits=2))%")
 
 # **********************************************************
@@ -236,6 +242,18 @@ end
 using .EndogenousParameters
 
 # Invert (calibrate) the model for the new parameters
-paramsᵉ = ModelParameters(α, β, κᵉ, εᵉ, μ);
+paramsᵉ = ModelParameters(α, β, μ, κᵉ, εᵉ);
 Ãⱼᵉ, B̃ᵢᵉ, w̃ⱼᵉ, πᵢⱼᵉ, Tw̃ᵢᵉ, φᵢᵉ, Lᵢᵉ, θᵢᵉ, H̃ₘⱼᵉ, H̃ᵣᵢᵉ, CMAᵉ = invert_model(paramsᵉ, inputs); 
 
+# Recover exogenous part of productivities and amenitie
+endo_params = EndogenousModelParameters(λ, δ, η, ρ);
+exo_fundᵉ = ExogenousFundamentals(Ãⱼᵉ, B̃ᵢᵉ, φᵢᵉ, Kᵢ, τᵢⱼ);
+aⱼ, bᵢ = detangle_agglomeration(endo_params,exo_fundᵉ,Hₘⱼ,Hᵣᵢ);
+
+# solve model
+prices_guess = PricesGuess(Qⱼ, w̃ⱼᵉ, θᵢᵉ); 
+exo_fundᵉ = ExogenousFundamentals(aⱼ, bᵢ, φᵢᵉ, Kᵢ, τᵢⱼ);
+Qⱼeq_end, w̃ⱼeq_end, θᵢeq_end, πᵢⱼeq_end, Ūeq_end = solve_equilibrium(paramsᵉ, exo_fundᵉ, H, closed_city = true,
+                                                                        exogenous_agglomeration = false, 
+                                                                        endo_params = endo_params, 
+                                                                        prices_guess = prices_guess);

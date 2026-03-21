@@ -1,29 +1,31 @@
 module ModelSolver
 
 using SpecialFunctions 
-using ..Types: ModelParameters, ExogenousFundamentals, PricesGuess
+using ..Types: ModelParameters, EndogenousModelParameters, ExogenousFundamentals, PricesGuess
 
-export solve_equilibrium
+export solve_equilibrium, detangle_agglomeration
 
-function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundamentals, pop_uti::Float64; prices_guess::Union{PricesGuess, Nothing} = nothing, tol_digits::Int=3, iter_max::Int=1000, damp_fact::Float64 = 0.4, closed_city::Bool=true)
+function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundamentals, pop_uti::Float64; exogenous_agglomeration::Bool=true, endo_params::Union{EndogenousModelParameters, Nothing}=nothing, prices_guess::Union{PricesGuess, Nothing} = nothing, tol_digits::Int=3, iter_max::Int=1000, damp_fact::Float64 = 0.4, closed_city::Bool=true)
     "
         This function assumes that you have predefined the parameters
-        {α, β, κ, ε, and μ}. It then solves for the general equilibrium 
-        of the model given the structural exogenous fundamentals:
-            1. Ãⱼ = workplace productivity;
-            2. B̃ᵢ = residential amenities;
+        {α, β, κ, ε, μ}. If you are in the endogenous agglomeration
+        forces case, you will also need {λ, δ, η, ρ}. It then solves 
+        for the general equilibrium of the model given the structural 
+        exogenous fundamentals:
+            1. Ãⱼ/aⱼ = workplace exogenous productivity;
+            2. B̃ᵢ/bᵢ = residential exogenous amenities;
             3. φᵢ = density of development;
             4. Kᵢ = geographical area; and
             5. τᵢⱼ = bilateral travel time matrix.
         The output of this function is the set of endogenous equilibrium
         variables {w̃ⱼ, θᵢ, Qⱼ, πᵢⱼ} that satisfy labor and land market
-        clearing conditions. The equilibrium is defined in page 18 (2143)
-        of the paper. 
+        clearing conditions. The exogenous equilibrium is defined in page 
+        18 (2143) of the paper.  
 
-        If we are in the CLOSED-CITY case, then
+        If you are in the CLOSED-CITY case, then
             a. H (total popolation) is an exogenous variable; and
             b. Ū (reservation/wider economy utility level) is an endogenous variable.
-        If we are in an OPEN-CITY case, then
+        If you are in an OPEN-CITY case, then
             a. H (total popolation) is an endogenous variable; and
             b. Ū (reservation/wider economy utility level) is an exogenous variable.
 
@@ -36,21 +38,33 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
             higher computational efficiency. This is different from the rest of the
             functions which have a 6-digit tolerance as standard.
     "
+    # checking if we are good to go
+    if !exogenous_agglomeration && isnothing(endo_params)
+        ErrorException("The endogenous agglomeration equilibrium demands further the λ, δ, η, and ρ parameters.")
+    end
+
     # unpack parameters
-    (; α, β, κ, ε, μ) = params; γ = gamma((ε-1)/ε);
-    (; Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ) = exo_fund;
+    (; α, β, μ, κ, ε) = params; γ = gamma((ε-1)/ε);
+    if exogenous_agglomeration
+        # unpack exogenous fundamentals
+        (; Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ) = exo_fund;
+    else
+        # unpack remaining parameters
+        (; λ, δ, η, ρ) = endo_params;
+        # if in the endogenous agglomeration model, treat the first two entries of `exo_fund` as the exogenous part of the agglomeration forces
+        aⱼ=copy(exo_fund.Ãⱼ); bᵢ=copy(exo_fund.B̃ᵢ); 
+        φᵢ = copy(exo_fund.φᵢ); Kᵢ = copy(exo_fund.Kᵢ); τᵢⱼ = copy(exo_fund.τᵢⱼ);    
+    end
 
     # separate last argument between the open- and closed-city cases
-    H̃ = closed_city ? copy(pop_uti) : 1;
-    Ū = closed_city ? 1 : copy(pop_uti);   
+    Ū = closed_city ? 1 : copy(pop_uti);  
+    H̃ = closed_city ? copy(pop_uti) : (Ū/γ)^ε;
 
     # positional variables
-    pos_employment = vec(Ãⱼ.>0) ; pos_residence = vec(B̃ᵢ.>0);
+    pos_employment = exogenous_agglomeration ? vec(Ãⱼ.>0) : vec(aⱼ.>0)
+    pos_residence = exogenous_agglomeration ? vec(B̃ᵢ.>0) : vec(bᵢ.>0)
     idx_emp = findall(pos_employment) ; idx_res = findall(pos_residence);
     n_places = size(Kᵢ,1); n_workplaces = size(idx_emp,1); n_residence = size(idx_res,1);
-    pure_emp = @. (Ãⱼ>0) & (B̃ᵢ==0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
-    pure_res = @. (Ãⱼ==0) & (B̃ᵢ>0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
-    shared_space = @. (Ãⱼ>0) & (B̃ᵢ>0); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
 
     # initial guess for the equilibrium prices of the model
     pg = isnothing(prices_guess) ? PricesGuess(n_places, pure_res, shared_space) : prices_guess
@@ -63,10 +77,25 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
     Ew̃ᵢ = zeros(n_places); Φᵢⱼ = zeros(n_residence, n_workplaces);
     Lₘⱼ = zeros(n_places); πᵢⱼ = zeros(n_places, n_places);
 
+    # initial values for endogenous agglomeration forces; only relevant in the endogenous agglomeration model 
+    if !exogenous_agglomeration 
+        # initial values for employement distribution (eq. 9)
+        @. H̃ₘⱼ[pos_employment] =  H̃/n_workplaces;
+        @. H̃ᵣᵢ[pos_residence] = H̃/n_residence;
+        # initial values for productivities and amenities (eq. 20 + 21) 
+        Ãⱼ = @. aⱼ * $sum(exp(-δ*τᵢⱼ)*(H̃ₘⱼ/Kᵢ)', dims=2)^λ ;
+        B̃ᵢ = @. bᵢ * $sum(exp(-ρ*τᵢⱼ)*(H̃ᵣᵢ/Kᵢ)', dims=2)^η;
+    end 
+    
+    # further pisitional arguments
+    pure_emp = @. $vec((Ãⱼ>0) & (B̃ᵢ==0)); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
+    pure_res = @. $vec((Ãⱼ==0) & (B̃ᵢ>0)); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
+    shared_space = @. $vec((Ãⱼ>0) & (B̃ᵢ>0)); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
+
     # completely specialized blocks never change since amenity or productivity are zero  
     @. θᵢ1[pure_emp] = 1;
     @. θᵢ1[pure_res] = 0;
-    
+
     # defining loop variables
     iter = 0; tol = 10.0^(-tol_digits);
     err_Q = 1; err_w = 1; err_θ = 1; err_pop_uti = 1;
@@ -76,10 +105,10 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
     Lᵢ = @. φᵢ * Kᵢ^(1-μ); # eq. 19
 
     # initiate the model loop
-    if closed_city
-        println(">>>> Solving the closed-city equilibrium <<<<")
-    else
-        println(">>>> Solving the open-city equilibrium <<<<")
+    if exogenous_agglomeration
+        closed_city ? println(">>>> Solving the closed-city exogenous agglomeration equilibrium <<<<") : println(">>>> Solving the open-city exogenous agglomeration equilibrium <<<<")
+    else 
+        closed_city ? println(">>>> Solving the closed-city endogenous agglomeration equilibrium <<<<") : println(">>>> Solving the open-city endogenous agglomeration equilibrium <<<<")
     end
 
     while ((err_Q >= tol) || (err_w >= tol) || (err_θ >= tol) || (err_pop_uti >= tol)) && (iter <= iter_max)
@@ -89,21 +118,17 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
         @. Φᵢⱼ = (B̃ᵢ[pos_residence] * w̃ⱼ0[pos_employment]')^ε * (dᵢⱼ*Qⱼ0[pos_residence]^(1-β))^(-ε);
         Φ =  sum(Φᵢⱼ); 
         @. πᵢⱼ[idx_res,idx_emp] = Φᵢⱼ / Φ;
-        
-        # --- spatial equilibrium condition through eq. 9 ---
-        if closed_city
-            # Ū is endogenous in the closed-city equilibrium
-            Ū = γ * Φ ^ (1/ε);
-        else
-            # H̃ is endogenous in the open-city equilibrium
-            Ūcity = γ * Φ ^ (1/ε);
-            H̃ = (Ūcity/Ū)^ε * H̃; # increase population if within-city utility exceeds that of the wider economy; from eq. 9 one can also infer that employment scales in utility at elasticity ε. 
-        end
 
         # --- H̃ₘⱼ and H̃ᵣᵢ through eq. 5 ---
         @. H̃ₘⱼ = $sum(πᵢⱼ, dims=1)' * H̃ ;
         @. H̃ᵣᵢ = $sum(πᵢⱼ, dims=2) * H̃ ;
         
+        # --- If in the endogenous agglomeration case, update Ãⱼ and B̃ᵢ through eq. 20 + 21 ---
+        if !exogenous_agglomeration
+            @. Ãⱼ = aⱼ * $sum(exp(-δ*τᵢⱼ)*(H̃ₘⱼ/Kᵢ)', dims=2)^λ ; 
+            @. B̃ᵢ = bᵢ * $sum(exp(-ρ*τᵢⱼ)*(H̃ᵣᵢ/Kᵢ)', dims=2)^η;
+        end
+
         # --- w̃ⱼ through eq. 10 + eq. 11 ---
         @. Ỹⱼ = Ãⱼ * H̃ₘⱼ^α * (θᵢ0 * Lᵢ)^(1-α); 
         @. w̃ⱼ1[pos_employment] = α * Ỹⱼ[pos_employment] / H̃ₘⱼ[pos_employment];
@@ -114,16 +139,26 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
         @. Qⱼ1[pure_emp] = ((1-α) * Ỹⱼ[pure_emp]) / (θᵢ0[pure_emp] * Lᵢ[pure_emp]); # you could maybe use S.24 here?!
         @. Qⱼ1[shared_space] = (((1-α) * Ỹⱼ[shared_space]) + ((1-β) * Ew̃ᵢ[shared_space] * H̃ᵣᵢ[shared_space])) / Lᵢ[shared_space]; # akin to: θ * Qⱼ1[pure_emp] + (1-θ) * Qⱼ1[pure_res]
 
-        # --- θᵢ through eq. 10 (CPO wrt Lₘ, i.e., S.23) + S.53 --- PS.: my understanding is that since Lᵢ is exogenous, S.53 guarantees a market-clearing equilibrium.
+        # --- θᵢ through eq. 10 (FOC wrt Lₘ, i.e., S.23) + S.53 --- PS.: my understanding is that since Lᵢ is exogenous, S.53 guarantees a market-clearing equilibrium.
         @. Lₘⱼ[pos_employment] = (1-α) * Ỹⱼ[pos_employment] / Qⱼ0[pos_employment]; # why could you not use S.49 here? Maybe because I have H̃ⱼ instead of Hⱼ... 
         @. θᵢ1[shared_space] = Lₘⱼ[shared_space] / (Lᵢ[shared_space]);
+
+        # --- spatial equilibrium condition through eq. 9 ---
+        if closed_city
+            # Ū is endogenous in the closed-city equilibrium
+            Ū = γ * Φ ^ (1/ε);
+        else
+            # H̃ is endogenous in the open-city equilibrium
+            Ūcity = γ * Φ ^ (1/ε);
+            H̃ = (Ūcity/Ū)^ε * H̃; # increase population if within-city utility exceeds that of the wider economy; from eq. 9 one can also infer that employment scales in utility at elasticity ε. 
+        end
 
         # update error metrics here
         iter += 1; 
         err_Q = @. $round($maximum(abs(Qⱼ1 - Qⱼ0)),digits=tol_digits); 
         err_w = @. $round($maximum(abs(w̃ⱼ1 - w̃ⱼ0)),digits=tol_digits); 
         err_θ = @. $round($maximum(abs(θᵢ1 - θᵢ0)),digits=tol_digits); 
-        closed_city ? (err_pop_uti = round(abs(Φ/H̃-1),digits=tol_digits)) : (err_pop_uti = round(abs(Ūcity/Ū-1),digits=tol_digits)); # not checking for convergency, but for consistency w/ the data
+        closed_city ? (err_pop_uti = 0) : (err_pop_uti = round(abs(Ūcity/Ū-1),digits=tol_digits)); # not checking for convergency, but for consistency w/ the data
 
         # revise guesses
         @. Qⱼ0 = (1-damp_fact) * Qⱼ0 + damp_fact * Qⱼ1 ;
@@ -141,10 +176,21 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
     return closed_city ? (Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, Ū) : (Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, H̃)
 end
 
+function detangle_agglomeration(params::EndogenousModelParameters, exo_fund::ExogenousFundamentals, Hₘⱼ::Vector{Float64}, Hᵣᵢ::Vector{Float64})
+    
+    # unpacking parameters
+    (; λ, δ, η, ρ) = params;
+    (; Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ) = exo_fund;
 
-function endogenous()
+    # Detangling productivity with equation (20)
+    Υⱼ = @. $sum(exp(-δ*τᵢⱼ)*(Hₘⱼ/Kᵢ)', dims=2);
+    aⱼ = @. Ãⱼ / (Υⱼ^λ);
 
+    # Detangling amenities with equation (21)
+    Ωᵢ = @. $sum(exp(-ρ*τᵢⱼ)*(Hᵣᵢ/Kᵢ)', dims=2);
+    bᵢ = @. B̃ᵢ / (Ωᵢ^η);
 
+    return vec(aⱼ), vec(bᵢ)
 end
 
 end
