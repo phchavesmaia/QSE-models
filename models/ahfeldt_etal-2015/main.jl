@@ -256,4 +256,12 @@ exo_fundᵉ = ExogenousFundamentals(aⱼ, bᵢ, φᵢᵉ, Kᵢ, τᵢⱼ);
 Qⱼeq_end, w̃ⱼeq_end, θᵢeq_end, πᵢⱼeq_end, Ūeq_end = solve_equilibrium(paramsᵉ, exo_fundᵉ, H, closed_city = true,
                                                                         exogenous_agglomeration = false, 
                                                                         endo_params = endo_params, 
-                                                                        prices_guess = prices_guess);
+                                                                        prices_guess = prices_guess,
+                                                                        tol_digits=2);
+
+# validating the CLOSED-CITY ENDOGENOUS AGGLOMERATION equilibrium variables with real data
+snty_check_eq_closed_end = [
+    snty_check(w̃ⱼeq_end,w̃ⱼᵉ,tol=3),
+    snty_check(θᵢeq_end,θᵢᵉ,tol=3),
+    snty_check(Qⱼeq_end,Qⱼ,tol=3)];
+println("Does this CLOSED-CITY equilibrium match the data? $(sum(snty_check_eq_closed_end)==length(snty_check_eq_closed_end))")

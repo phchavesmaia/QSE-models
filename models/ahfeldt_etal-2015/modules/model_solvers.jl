@@ -177,7 +177,13 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
 end
 
 function detangle_agglomeration(params::EndogenousModelParameters, exo_fund::ExogenousFundamentals, Hₘⱼ::Vector{Float64}, Hᵣᵢ::Vector{Float64})
-    
+    "
+    The function detangles the overall agglomeration forces {Ãⱼ,B̃ᵢ} into
+    its endogenous and exogenous components {Υⱼ,Ωᵢ} and {aⱼ, bᵢ}, respectivelly.
+    It assumes you provide the properly estimated {λ, δ, η, ρ} set of parameters.
+    Importantly, it only reports the exogenous component of the agglomeration
+    forces, since it is the only part that matters for estimating the GE model.   
+    "
     # unpacking parameters
     (; λ, δ, η, ρ) = params;
     (; Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ) = exo_fund;
