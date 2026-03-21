@@ -156,7 +156,7 @@ const H = sum(Hᵣᵢ);
 Qⱼeq, w̃ⱼeq, θᵢeq, πᵢⱼeq, Ūeq = solve_equilibrium(params, exo_fund, H, closed_city = true, 
                                                     prices_guess = prices_guess);
 
-# validating the CLOSED-CITY equilibrium variables with real data
+# validating the CLOSED-CITY equilibrium variables with real data and previously recovered equilibrium results
 snty_check_eq_closed = [
     snty_check(w̃ⱼeq,w̃ⱼ,tol=3),
     snty_check(θᵢeq,θᵢ,tol=3),
@@ -168,7 +168,7 @@ println("Does this CLOSED-CITY equilibrium match the data? $(sum(snty_check_eq_c
 Qⱼeq_open, w̃ⱼeq_open, θᵢeq_open, πᵢⱼeq_open, H̃eq_open = solve_equilibrium(params, exo_fund, Ūeq, closed_city = false, 
                                                                             prices_guess = prices_guess, damp_fact = 0.2);
 
-# validating the OPEN-CITY equilibrium variables with real data
+# validating the OPEN-CITY equilibrium variables with real data and previously recovered equilibrium results
 snty_check_eq_open = [
     snty_check(w̃ⱼ,w̃ⱼeq_open,tol=3),
     snty_check(θᵢ,θᵢeq_open,tol=3),
@@ -181,7 +181,7 @@ println("Does this OPEN-CITY equilibrium match the data? $(sum(snty_check_eq_ope
 # solve the CLOSED-CITY equilibrium blindly (no initial guesses at prices)
 Qⱼeqb, w̃ⱼeqb, θᵢeqb, πᵢⱼeqb, Ūeqb = solve_equilibrium(params, exo_fund, H, closed_city = true);
 
-# validaring if initial guesses lead to different results...
+# validaring whether different initial guesses lead to different results
 snty_check_guess = [
     snty_check(w̃ⱼeq,w̃ⱼeqb,tol=3),
     snty_check(θᵢeq,θᵢeqb,tol=3),
@@ -259,7 +259,7 @@ Qⱼeq_end, w̃ⱼeq_end, θᵢeq_end, πᵢⱼeq_end, Ūeq_end = solve_equilib
                                                                         prices_guess = prices_guess,
                                                                         tol_digits=2);
 
-# validating the CLOSED-CITY ENDOGENOUS AGGLOMERATION equilibrium variables with real data
+# validating the CLOSED-CITY ENDOGENOUS AGGLOMERATION equilibrium variables with real data and previously recovered equilibrium results
 snty_check_eq_closed_end = [
     snty_check(w̃ⱼeq_end,w̃ⱼᵉ,tol=3),
     snty_check(θᵢeq_end,θᵢᵉ,tol=3),
