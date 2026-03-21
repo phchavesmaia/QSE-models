@@ -37,11 +37,11 @@ Importantly, the macro tries to broadcast and fuse all operations it contemplate
 ``` 
 
 ## Structure
-In this repository, I changed the folder structure a little. Instead of creating a `functions` folder which I would directly include in the main file, I opted for creating a `modules` folder. This was done precisely because I wanted to start learning how to make modules and properly integrate them in a Julia workflow.
+In this repository, I slightly reorganized the folder structure. Instead of creating a `functions` folder to be directly included in the main file, I introduced a `modules` folder. This change was intentional, as I wanted to learn how to properly build and integrate modules within a Julia workflow.
 
-This makes the project much more... modular. Since each module clearly declares its own dependencies, the main file stays clean, and taking a 'plucking' logic from this code for other projects becomes a seamless, piece-wise process.
+This approach makes the project more modular overall. Each module explicitly declares its own dependencies, which keeps the main file clean and makes it easier to reuse specific pieces of code in other projects.
 
-The downside is that the code becomes much more "Julian", in the sense that it becomes a little harder to parse through. If you feel like disregarding this modules approach, I would encourage you to get back to a commit dating from, at most, March 11, 2026. 
+The trade-off is that the code becomes more “Julian,” in the sense that it can be a bit harder to navigate at first. If you prefer a simpler structure without modules, I recommend checking out a commit from March 11, 2026, or earlier. 
 
 ## References
 
