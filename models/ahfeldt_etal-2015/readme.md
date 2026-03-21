@@ -13,7 +13,7 @@ It follows a list of what remains to be implemented:
     - [X] Solve model for exogenous fundamentals;
     - [X] Implement counterfactuals.
 - [ ] Implement the counterfactual exercises with **endogenous** fundamentals
-    - [ ] Solve model for endogenous fundamentals;
+    - [X] Solve model for endogenous fundamentals;
     - [ ] Implement counterfactuals.
 
 ### Notation
