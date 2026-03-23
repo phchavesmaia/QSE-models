@@ -196,6 +196,12 @@ println("Are the CLOSED-CITY results robust to different initial guesses (is the
 
 GC.gc() # garbage collector (free memory)
 
+"
+    This section of the code applies the same equilibrium algorithms
+    of the previous section, but changing the exogenous fundamentals
+    to generate counterfactuals.
+"
+
 # --- What happens if we ban cars in the entire city? --- #
 fileIn = matopen("./data/input/ttpublic_2006_ren.mat");
 dset = read(fileIn); close(fileIn);
@@ -221,6 +227,16 @@ println("The population change from banning cars would be of: $(round(100*(H̃pu
 # **********************************************************
 
 GC.gc() # garbage collector (free memory)
+
+"
+    This section of the code implements the equilibrium with endogenous
+    fundamentals. This is done by microfundamenting the agglomeration 
+    forces as in ARSW. Pragmatically, this is done by the function
+    `detangle_agglomeration`, which uses the parameters {λ, δ, η, ρ},
+    the exogneous fundamentals {Ãⱼᵉ, B̃ᵢᵉ, Kᵢ, τᵢⱼ}, and the observed
+    equilibrium values of {Hₘⱼ, Hᵣᵢ} to recover the exogenous 
+    agglomeration fundamentals {aⱼ, bᵢ}.
+"
 
 # Model parameters from GMM joint estimation
 module EndogenousParameters
@@ -266,4 +282,3 @@ snty_check_eq_closed_end = [
     snty_check(Qⱼeq_end,Qⱼ,tol=3)];
 println("Does this CLOSED-CITY equilibrium match the data? $(sum(snty_check_eq_closed_end)==length(snty_check_eq_closed_end))")
 
-# testing github integration
