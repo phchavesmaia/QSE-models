@@ -265,3 +265,5 @@ snty_check_eq_closed_end = [
     snty_check(θᵢeq_end,θᵢᵉ,tol=3),
     snty_check(Qⱼeq_end,Qⱼ,tol=3)];
 println("Does this CLOSED-CITY equilibrium match the data? $(sum(snty_check_eq_closed_end)==length(snty_check_eq_closed_end))")
+
+# testing github integration
