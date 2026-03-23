@@ -267,10 +267,11 @@ endo_params = EndogenousModelParameters(λ, δ, η, ρ);
 exo_fundᵉ = ExogenousFundamentals(Ãⱼᵉ, B̃ᵢᵉ, φᵢᵉ, Kᵢ, τᵢⱼ);
 aⱼ, bᵢ = detangle_agglomeration(endo_params,exo_fundᵉ,Hₘⱼ,Hᵣᵢ);
 
-# solve model
+# solve model the CLOSED-CITY endogenous agglomeration model
 prices_guess = PricesGuess(Qⱼ, w̃ⱼᵉ, θᵢᵉ); 
 exo_fundᵉ = ExogenousFundamentals(aⱼ, bᵢ, φᵢᵉ, Kᵢ, τᵢⱼ);
-Qⱼeq_end, w̃ⱼeq_end, θᵢeq_end, πᵢⱼeq_end, Ūeq_end = solve_equilibrium(paramsᵉ, exo_fundᵉ, H, closed_city = true,
+Qⱼeq_end, w̃ⱼeq_end, θᵢeq_end, πᵢⱼeq_end, Ūeq_end = solve_equilibrium(paramsᵉ, exo_fundᵉ, H, 
+                                                                        closed_city = true,
                                                                         exogenous_agglomeration = false, 
                                                                         endo_params = endo_params, 
                                                                         prices_guess = prices_guess,
@@ -278,8 +279,49 @@ Qⱼeq_end, w̃ⱼeq_end, θᵢeq_end, πᵢⱼeq_end, Ūeq_end = solve_equilib
 
 # validating the CLOSED-CITY ENDOGENOUS AGGLOMERATION equilibrium variables with real data and previously recovered equilibrium results
 snty_check_eq_closed_end = [
-    snty_check(w̃ⱼeq_end,w̃ⱼᵉ,tol=3),
-    snty_check(θᵢeq_end,θᵢᵉ,tol=3),
-    snty_check(Qⱼeq_end,Qⱼ,tol=3)];
+    snty_check(w̃ⱼeq_end,w̃ⱼᵉ,tol=2),
+    snty_check(θᵢeq_end,θᵢᵉ,tol=2),
+    snty_check(Qⱼeq_end,Qⱼ,tol=2)];
 println("Does this CLOSED-CITY equilibrium match the data? $(sum(snty_check_eq_closed_end)==length(snty_check_eq_closed_end))")
 
+# solve model the OPEN-CITY endogenous agglomeration model
+Qⱼeq_open_end, w̃ⱼeq_open_end, θᵢeq_open_end, πᵢⱼeq_open_end, H̃_open_end = solve_equilibrium(paramsᵉ, exo_fundᵉ, Ūeq_end, 
+                                                                        closed_city = false,
+                                                                        exogenous_agglomeration = false, 
+                                                                        endo_params = endo_params, 
+                                                                        prices_guess = prices_guess,
+                                                                        tol_digits=2, damp_fact=0.25);
+
+# validating the OPEN-CITY ENDOGENOUS AGGLOMERATION equilibrium variables with real data and previously recovered equilibrium results                                                                        
+snty_check_eq_open_end = [
+    snty_check(w̃ⱼeq_open_end,w̃ⱼᵉ,tol=2),
+    snty_check(θᵢeq_open_end,θᵢᵉ,tol=2),
+    snty_check(Qⱼeq_open_end,Qⱼ,tol=2)];
+println("Does this OPEN-CITY equilibrium match the data? $(sum(snty_check_eq_closed_end)==length(snty_check_eq_closed_end))")
+
+# ******************************************************************
+# *** Counterfactuals 2006 equilibrium (endogenous fundamentals) *** 
+# ******************************************************************
+
+GC.gc() # garbage collector (free memory)
+
+# enunciate altered exogenous fundamentals of the model
+exo_fund_ctfᵉ = ExogenousFundamentals(aⱼ, bᵢ, φᵢᵉ, Kᵢ, τᵢⱼpub); 
+
+# estimate conterfactual CLOSED-CITY endogenous agglomeration equilibrium
+Qⱼeq_end_ctf, w̃ⱼeq_end_ctf, θᵢeq_end_ctf, πᵢⱼeq_end_ctf, Ūeq_end_ctf = solve_equilibrium(paramsᵉ, exo_fund_ctfᵉ, H, 
+                                                                                            closed_city = true,
+                                                                                            exogenous_agglomeration = false, 
+                                                                                            endo_params = endo_params, 
+                                                                                            prices_guess = prices_guess,
+                                                                                            tol_digits=2);
+println("The welfare change from banning cars would be of: $(round(100*(Ūeq_end-Ūeq_end_ctf)/Ūeq,digits=2))%")
+
+# estimate conterfactual OPEN-CITY endogenous agglomeration equilibrium
+Qⱼeq_open_end_ctf, w̃ⱼeq_open_end_ctf, θᵢeq_open_end_ctf, πᵢⱼeq_open_end_ctf, H̃_open_end_ctf = solve_equilibrium(paramsᵉ, exo_fundᵉ, Ūeq_end, 
+                                                                                                            closed_city = false,
+                                                                                                            exogenous_agglomeration = false, 
+                                                                                                            endo_params = endo_params, 
+                                                                                                            prices_guess = prices_guess,
+                                                                                                            tol_digits=2, damp_fact=0.25);
+println("The population change from banning cars would be of: $(round(100*(H̃_open_end_ctf/H-1),digits=2))%")

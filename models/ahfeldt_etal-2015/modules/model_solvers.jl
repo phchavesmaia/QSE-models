@@ -155,16 +155,16 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
 
         # update error metrics here
         iter += 1; 
-        err_Q = @. $round($maximum(abs(Qⱼ1 - Qⱼ0)),digits=tol_digits); 
-        err_w = @. $round($maximum(abs(w̃ⱼ1 - w̃ⱼ0)),digits=tol_digits); 
-        err_θ = @. $round($maximum(abs(θᵢ1 - θᵢ0)),digits=tol_digits); 
-        closed_city ? (err_pop_uti = 0) : (err_pop_uti = round(abs(H̃1/H̃-1),digits=tol_digits)); # not checking for convergency, but for consistency w/ the data
+        err_Q = @. $maximum(abs(Qⱼ1 - Qⱼ0)); 
+        err_w = @. $maximum(abs(w̃ⱼ1 - w̃ⱼ0)); 
+        err_θ = @. $maximum(abs(θᵢ1 - θᵢ0)); 
+        closed_city ? (err_pop_uti = 0) : (err_pop_uti = abs(H̃1/H̃-1)); # not checking for convergency, but for consistency w/ the data
 
         # revise guesses
         @. Qⱼ0 = (1-damp_fact) * Qⱼ0 + damp_fact * Qⱼ1 ;
         @. w̃ⱼ0 = (1-damp_fact) * w̃ⱼ0 + damp_fact * w̃ⱼ1 ;
         @. θᵢ0 = (1-damp_fact) * θᵢ0 + damp_fact * θᵢ1 ;
-        !closed_city && (H̃ = (1-damp_fact) * H̃ + damp_fact * H̃1) ; # only in the open city case
+        !closed_city && (H̃ = (1-(0.5*damp_fact)) * H̃ + (0.5*damp_fact) * H̃1) ; # only in the open city case. Damping the `damp_fact` even further because there is a strong positive feedback loop here, which is amplified due to ε being relatively large 
 
         # Print convergence rate
         println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0), trunc(err_pop_uti / tol, digits=0)]);
