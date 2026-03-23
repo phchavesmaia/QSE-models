@@ -219,7 +219,7 @@ println("The welfare change from banning cars would be of: $(round(100*(Ūpub-U
 # estimate alternative OPEN-CITY equilibrium
 Qⱼpub_open, w̃ⱼpub_open, θᵢpub_open, πᵢⱼpub_open, H̃pub = solve_equilibrium(params, exo_fund_ctf, Ūeq, closed_city = false, 
                                                                             prices_guess = prices_guess, 
-                                                                            tol_digits=2);
+                                                                            tol_digits=2, damp_fact=0.3);
 println("The population change from banning cars would be of: $(round(100*(H̃pub/H-1),digits=2))%")
 
 # **********************************************************
@@ -259,6 +259,7 @@ using .EndogenousParameters
 
 # Invert (calibrate) the model for the new parameters
 paramsᵉ = ModelParameters(α, β, μ, κᵉ, εᵉ);
+inputs = InverterInputs(Qⱼ,Hₘⱼ,Hᵣᵢ,τᵢⱼ,Kᵢ); # repeating w/ 2006 data
 Ãⱼᵉ, B̃ᵢᵉ, w̃ⱼᵉ, πᵢⱼᵉ, Tw̃ᵢᵉ, φᵢᵉ, Lᵢᵉ, θᵢᵉ, H̃ₘⱼᵉ, H̃ᵣᵢᵉ, CMAᵉ = invert_model(paramsᵉ, inputs); 
 
 # Recover exogenous part of productivities and amenitie

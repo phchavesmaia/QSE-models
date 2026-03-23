@@ -58,7 +58,7 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
 
     # separate last argument between the open- and closed-city cases
     Ū = closed_city ? 1 : copy(pop_uti);  
-    H̃ = closed_city ? copy(pop_uti) : (Ū/γ)^ε;
+    H̃ = closed_city ? copy(pop_uti) : (Ū/γ)^ε; # initial guess w/ eq. 9
 
     # positional variables
     pos_employment = exogenous_agglomeration ? vec(Ãⱼ.>0) : vec(aⱼ.>0)
@@ -116,7 +116,7 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
 
         # --- πᵢⱼ through eq. 4 ---
         @. Φᵢⱼ = (B̃ᵢ[pos_residence] * w̃ⱼ0[pos_employment]')^ε * (dᵢⱼ*Qⱼ0[pos_residence]^(1-β))^(-ε);
-        Φ =  sum(Φᵢⱼ); 
+        Φ =  sum(Φᵢⱼ); # Φ need not match H̃; only a specific rescaling of B̃ᵢ makes it coincide, so it diverges in counterfactual/comparative statics exercises.
         @. πᵢⱼ[idx_res,idx_emp] = Φᵢⱼ / Φ;
 
         # --- H̃ₘⱼ and H̃ᵣᵢ through eq. 5 ---
@@ -150,7 +150,7 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
         else
             # H̃ is endogenous in the open-city equilibrium
             Ūcity = γ * Φ ^ (1/ε);
-            H̃ = (Ūcity/Ū)^ε * H̃; # increase population if within-city utility exceeds that of the wider economy; from eq. 9 one can also infer that employment scales in utility at elasticity ε. 
+            H̃1 = (Ūcity/Ū)^ε * H̃; # increase population if within-city utility exceeds that of the wider economy; from eq. 9 one can also infer that employment scales in utility at elasticity ε. 
         end
 
         # update error metrics here
@@ -158,12 +158,13 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
         err_Q = @. $round($maximum(abs(Qⱼ1 - Qⱼ0)),digits=tol_digits); 
         err_w = @. $round($maximum(abs(w̃ⱼ1 - w̃ⱼ0)),digits=tol_digits); 
         err_θ = @. $round($maximum(abs(θᵢ1 - θᵢ0)),digits=tol_digits); 
-        closed_city ? (err_pop_uti = 0) : (err_pop_uti = round(abs(Ūcity/Ū-1),digits=tol_digits)); # not checking for convergency, but for consistency w/ the data
+        closed_city ? (err_pop_uti = 0) : (err_pop_uti = round(abs(H̃1/H̃-1),digits=tol_digits)); # not checking for convergency, but for consistency w/ the data
 
         # revise guesses
         @. Qⱼ0 = (1-damp_fact) * Qⱼ0 + damp_fact * Qⱼ1 ;
         @. w̃ⱼ0 = (1-damp_fact) * w̃ⱼ0 + damp_fact * w̃ⱼ1 ;
         @. θᵢ0 = (1-damp_fact) * θᵢ0 + damp_fact * θᵢ1 ;
+        !closed_city && (H̃ = (1-damp_fact) * H̃ + damp_fact * H̃1) ; # only in the open city case
 
         # Print convergence rate
         println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0), trunc(err_pop_uti / tol, digits=0)]);
