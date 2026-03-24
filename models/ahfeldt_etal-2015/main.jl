@@ -153,7 +153,7 @@ prices_guess = PricesGuess(Qⱼ, w̃ⱼ, θᵢ);
 
 # solve the CLOSED-CITY equilibrium using data/model-consistent initial guesses
 const H = sum(Hᵣᵢ);
-Qⱼeq, w̃ⱼeq, θᵢeq, πᵢⱼeq, Ūeq = solve_equilibrium(params, exo_fund, H, closed_city = true, 
+Qⱼeq, w̃ⱼeq, θᵢeq, πᵢⱼeq, Ūeq = solve_equilibrium(params, exo_fund, H, open_city = false, 
                                                     prices_guess = prices_guess);
 
 # validating the CLOSED-CITY equilibrium variables with real data and previously recovered equilibrium results
@@ -164,8 +164,8 @@ snty_check_eq_closed = [
     snty_check(πᵢⱼeq,πᵢⱼ,tol=3)];
 println("Does this CLOSED-CITY equilibrium match the data? $(sum(snty_check_eq_closed)==length(snty_check_eq_closed))")
 
-# solve THE OPEN-CITY equilibrium using data/model-consistent initial guesses
-Qⱼeq_open, w̃ⱼeq_open, θᵢeq_open, πᵢⱼeq_open, H̃eq_open = solve_equilibrium(params, exo_fund, Ūeq, closed_city = false, 
+# solve the OPEN-CITY equilibrium using data/model-consistent initial guesses
+Qⱼeq_open, w̃ⱼeq_open, θᵢeq_open, πᵢⱼeq_open, H̃eq_open = solve_equilibrium(params, exo_fund, Ūeq, open_city = true, 
                                                                             prices_guess = prices_guess, damp_fact = 0.2);
 
 # validating the OPEN-CITY equilibrium variables with real data and previously recovered equilibrium results
@@ -179,7 +179,7 @@ snty_check_eq_open = [
 println("Does this OPEN-CITY equilibrium match the data? $(sum(snty_check_eq_open)==length(snty_check_eq_open))")
 
 # solve the CLOSED-CITY equilibrium blindly (no initial guesses at prices)
-Qⱼeqb, w̃ⱼeqb, θᵢeqb, πᵢⱼeqb, Ūeqb = solve_equilibrium(params, exo_fund, H, closed_city = true);
+Qⱼeqb, w̃ⱼeqb, θᵢeqb, πᵢⱼeqb, Ūeqb = solve_equilibrium(params, exo_fund, H, open_city = false);
 
 # validaring whether different initial guesses lead to different results
 snty_check_guess = [
@@ -211,13 +211,13 @@ dset = read(fileIn); close(fileIn);
 exo_fund_ctf = ExogenousFundamentals(Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼpub); 
 
 # estimate alternative CLOSED-CITY equilibrium
-Qⱼpub, w̃ⱼpub, θᵢpub, πᵢⱼpub, Ūpub = solve_equilibrium(params, exo_fund_ctf, H, closed_city = true, 
+Qⱼpub, w̃ⱼpub, θᵢpub, πᵢⱼpub, Ūpub = solve_equilibrium(params, exo_fund_ctf, H, open_city = false, 
                                                         prices_guess = prices_guess, 
                                                         tol_digits=2);
 println("The welfare change from banning cars would be of: $(round(100*(Ūpub-Ūeq)/Ūeq,digits=2))%")
 
 # estimate alternative OPEN-CITY equilibrium
-Qⱼpub_open, w̃ⱼpub_open, θᵢpub_open, πᵢⱼpub_open, H̃pub = solve_equilibrium(params, exo_fund_ctf, Ūeq, closed_city = false, 
+Qⱼpub_open, w̃ⱼpub_open, θᵢpub_open, πᵢⱼpub_open, H̃pub = solve_equilibrium(params, exo_fund_ctf, Ūeq, open_city = true, 
                                                                             prices_guess = prices_guess, 
                                                                             tol_digits=2, damp_fact=0.3);
 println("The population change from banning cars would be of: $(round(100*(H̃pub/H-1),digits=2))%")
@@ -271,8 +271,8 @@ aⱼ, bᵢ = detangle_agglomeration(endo_params,exo_fundᵉ,Hₘⱼ,Hᵣᵢ);
 prices_guess = PricesGuess(Qⱼ, w̃ⱼᵉ, θᵢᵉ); 
 exo_fundᵉ = ExogenousFundamentals(aⱼ, bᵢ, φᵢᵉ, Kᵢ, τᵢⱼ);
 Qⱼeq_end, w̃ⱼeq_end, θᵢeq_end, πᵢⱼeq_end, Ūeq_end = solve_equilibrium(paramsᵉ, exo_fundᵉ, H, 
-                                                                        closed_city = true,
-                                                                        exogenous_agglomeration = false, 
+                                                                        open_city = false,
+                                                                        endogenous_agglomeration = true, 
                                                                         endo_params = endo_params, 
                                                                         prices_guess = prices_guess,
                                                                         tol_digits=2);
@@ -286,8 +286,8 @@ println("Does this CLOSED-CITY equilibrium match the data? $(sum(snty_check_eq_c
 
 # solve model the OPEN-CITY endogenous agglomeration model
 Qⱼeq_open_end, w̃ⱼeq_open_end, θᵢeq_open_end, πᵢⱼeq_open_end, H̃_open_end = solve_equilibrium(paramsᵉ, exo_fundᵉ, Ūeq_end, 
-                                                                        closed_city = false,
-                                                                        exogenous_agglomeration = false, 
+                                                                        open_city = true,
+                                                                        endogenous_agglomeration = true, 
                                                                         endo_params = endo_params, 
                                                                         prices_guess = prices_guess,
                                                                         tol_digits=2, damp_fact=0.25);
@@ -296,13 +296,19 @@ Qⱼeq_open_end, w̃ⱼeq_open_end, θᵢeq_open_end, πᵢⱼeq_open_end, H̃_o
 snty_check_eq_open_end = [
     snty_check(w̃ⱼeq_open_end,w̃ⱼᵉ,tol=2),
     snty_check(θᵢeq_open_end,θᵢᵉ,tol=2),
-    snty_check(Qⱼeq_open_end,Qⱼ,tol=2)];
+    snty_check(Qⱼeq_open_end,Qⱼ,tol=2),
+    Int(round(H̃_open_end/H,digits=2))];
 println("Does this OPEN-CITY equilibrium match the data? $(sum(snty_check_eq_closed_end)==length(snty_check_eq_closed_end))")
 
 # ******************************************************************
 # *** Counterfactuals 2006 equilibrium (endogenous fundamentals) *** 
 # ******************************************************************
 
+"
+    This section of the code applies the same equilibrium algorithms
+    of the previous section, but changing the exogenous fundamentals
+    to generate counterfactuals.
+"
 GC.gc() # garbage collector (free memory)
 
 # enunciate altered exogenous fundamentals of the model
@@ -310,18 +316,18 @@ exo_fund_ctfᵉ = ExogenousFundamentals(aⱼ, bᵢ, φᵢᵉ, Kᵢ, τᵢⱼpub)
 
 # estimate conterfactual CLOSED-CITY endogenous agglomeration equilibrium
 Qⱼeq_end_ctf, w̃ⱼeq_end_ctf, θᵢeq_end_ctf, πᵢⱼeq_end_ctf, Ūeq_end_ctf = solve_equilibrium(paramsᵉ, exo_fund_ctfᵉ, H, 
-                                                                                            closed_city = true,
-                                                                                            exogenous_agglomeration = false, 
-                                                                                            endo_params = endo_params, 
-                                                                                            prices_guess = prices_guess,
-                                                                                            tol_digits=2);
-println("The welfare change from banning cars would be of: $(round(100*(Ūeq_end-Ūeq_end_ctf)/Ūeq,digits=2))%")
+                                                                                        open_city = false,
+                                                                                        endogenous_agglomeration = true, 
+                                                                                        endo_params = endo_params, 
+                                                                                        prices_guess = prices_guess,
+                                                                                        tol_digits=2);
+println("The welfare change from banning cars would be of: $(round(100*(Ūeq_end-Ūeq_end_ctf)/Ūeq_end,digits=2))%")
 
 # estimate conterfactual OPEN-CITY endogenous agglomeration equilibrium
-Qⱼeq_open_end_ctf, w̃ⱼeq_open_end_ctf, θᵢeq_open_end_ctf, πᵢⱼeq_open_end_ctf, H̃_open_end_ctf = solve_equilibrium(paramsᵉ, exo_fundᵉ, Ūeq_end, 
-                                                                                                            closed_city = false,
-                                                                                                            exogenous_agglomeration = false, 
-                                                                                                            endo_params = endo_params, 
-                                                                                                            prices_guess = prices_guess,
-                                                                                                            tol_digits=2, damp_fact=0.25);
-println("The population change from banning cars would be of: $(round(100*(H̃_open_end_ctf/H-1),digits=2))%")
+Qⱼeq_open_end_ctf, w̃ⱼeq_open_end_ctf, θᵢeq_open_end_ctf, πᵢⱼeq_open_end_ctf, H̃_open_end_ctf = solve_equilibrium(paramsᵉ, exo_fund_ctfᵉ, Ūeq_end, 
+                                                                                                                open_city = true,
+                                                                                                                endogenous_agglomeration = true, 
+                                                                                                                endo_params = endo_params, 
+                                                                                                                prices_guess = prices_guess,
+                                                                                                                tol_digits=2, damp_fact=0.25);
+println("The population change from banning cars would be of: $(Int(round((H̃_open_end_ctf-H)/1000,digits=0)))k")

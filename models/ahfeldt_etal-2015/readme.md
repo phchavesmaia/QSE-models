@@ -15,6 +15,8 @@ It follows a list of what remains to be implemented:
 - [ ] Implement the counterfactual exercises with **endogenous** fundamentals
     - [X] Solve model for endogenous fundamentals;
     - [ ] Implement counterfactuals.
+        - [X] Closed-city
+        - [ ] Open-city
 
 ## Notation
 In this replication, I opted for a different approach compared to the one used for the other models. Here, instead of writing the point-wise operations as:
