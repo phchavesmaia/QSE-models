@@ -12,3 +12,7 @@ It follows the roadmap of this repository:
 
 # Dependencies
 If you are in a Windows machine, I highly recommend that you `instantiate` the repository as it is (Julia LTS). If you are in a Unix machine, it may be helpful to update `Manifest.toml` by accessing the Package Manager mode (`]`) and typing `resolve` followed by `update`.
+
+## Links
+
+[![Hypercommit](https://img.shields.io/badge/Hypercommit-DB2475)](https://hypercommit.com/qse-models)
