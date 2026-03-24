@@ -41,12 +41,12 @@ struct PricesGuess
     θᵢ0::Vector{Float64} # Share Of Commercial Floorspace
 end
 
-function PricesGuess(n_places::Int, pure_res::Vector{Bool}, shared_space::Vector{Bool})
-    Q = ones(n_places)
-    w = ones(n_places)
-    θ = ones(n_places)
-    θ[pure_res] .= 0
-    θ[shared_space] .= 0.5
+function PricesGuess(n_places::Int, pure_res::AbstractVector{Bool}, shared_space::AbstractVector{Bool})
+    Q = ones(n_places);
+    w = ones(n_places);
+    θ = ones(n_places);
+    θ[pure_res] .= 0;
+    θ[shared_space] .= 0.5;
     return PricesGuess(Q, w, θ)
 end
 

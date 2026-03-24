@@ -1,18 +1,29 @@
 # *********************
 # **** Load Files  **** 
 # *********************
+
+# activate and instantiate project 
+using Pkg
+try 
+    cd("/home/phchavesmaia/Dropbox/learn-julia/qse/")
+catch
+    cd("C:/Users/pedro.maia/Dropbox/learn-julia/qse/")
+end
+Pkg.activate(".")
+Pkg.instantiate()
+
+# import packages
 using  Revise, FixedEffectModels, CSV, DataFrames, Statistics, Random, BenchmarkTools, MAT 
 
-try 
-    cd("/home/phchavesmaia/Dropbox/learn-julia/qse/models/ahfeldt_etal-2015")
-catch
-    cd("C:/Users/pedro.maia/Dropbox/learn-julia/qse/models/ahfeldt_etal-2015/")
-end
+cd("./models/ahfeldt_etal-2015/")
 include("./modules/types.jl")
 include("./modules/matlab_helpers.jl")
 include("./modules/frechet_estimation.jl")
 include("./modules/model_inverters.jl")
 include("./modules/model_solvers.jl")
+
+# import modules
+using .Types, .MatlabHelpers, .FrechetEstimation, .ModelInverters, .ModelSolver
 
 # **************************
 # *** Setting parameters ***
@@ -29,10 +40,9 @@ module BaseParameters
     # export parameters
     export α, β, μ, ν, κε
 end 
+using .BaseParameters
 
-using .BaseParameters, .Types, .MatlabHelpers, .FrechetEstimation, .ModelInverters, .ModelSolver
-
-# Random Number 
+# random number 
 s = MersenneTwister(1);
 Random.seed!(s);
 
@@ -213,13 +223,13 @@ exo_fund_ctf = ExogenousFundamentals(Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼpub);
 # estimate alternative CLOSED-CITY equilibrium
 Qⱼpub, w̃ⱼpub, θᵢpub, πᵢⱼpub, Ūpub = solve_equilibrium(params, exo_fund_ctf, H, open_city = false, 
                                                         prices_guess = prices_guess, 
-                                                        tol_digits=2);
+                                                        tol_digits=3);
 println("The welfare change from banning cars would be of: $(round(100*(Ūpub-Ūeq)/Ūeq,digits=2))%")
 
 # estimate alternative OPEN-CITY equilibrium
 Qⱼpub_open, w̃ⱼpub_open, θᵢpub_open, πᵢⱼpub_open, H̃pub = solve_equilibrium(params, exo_fund_ctf, Ūeq, open_city = true, 
                                                                             prices_guess = prices_guess, 
-                                                                            tol_digits=2, damp_fact=0.3);
+                                                                            tol_digits=3, damp_fact=0.3);
 println("The population change from banning cars would be of: $(round(100*(H̃pub/H-1),digits=2))%")
 
 # **********************************************************
@@ -275,7 +285,7 @@ Qⱼeq_end, w̃ⱼeq_end, θᵢeq_end, πᵢⱼeq_end, Ūeq_end = solve_equilib
                                                                         endogenous_agglomeration = true, 
                                                                         endo_params = endo_params, 
                                                                         prices_guess = prices_guess,
-                                                                        tol_digits=2);
+                                                                        tol_digits=3);
 
 # validating the CLOSED-CITY ENDOGENOUS AGGLOMERATION equilibrium variables with real data and previously recovered equilibrium results
 snty_check_eq_closed_end = [
@@ -290,7 +300,7 @@ Qⱼeq_open_end, w̃ⱼeq_open_end, θᵢeq_open_end, πᵢⱼeq_open_end, H̃_o
                                                                         endogenous_agglomeration = true, 
                                                                         endo_params = endo_params, 
                                                                         prices_guess = prices_guess,
-                                                                        tol_digits=2, damp_fact=0.25);
+                                                                        tol_digits=3, damp_fact=0.25);
 
 # validating the OPEN-CITY ENDOGENOUS AGGLOMERATION equilibrium variables with real data and previously recovered equilibrium results                                                                        
 snty_check_eq_open_end = [
@@ -320,7 +330,7 @@ Qⱼeq_end_ctf, w̃ⱼeq_end_ctf, θᵢeq_end_ctf, πᵢⱼeq_end_ctf, Ūeq_end
                                                                                         endogenous_agglomeration = true, 
                                                                                         endo_params = endo_params, 
                                                                                         prices_guess = prices_guess,
-                                                                                        tol_digits=2);
+                                                                                        tol_digits=3);
 println("The welfare change from banning cars would be of: $(round(100*(Ūeq_end-Ūeq_end_ctf)/Ūeq_end,digits=2))%")
 
 # estimate conterfactual OPEN-CITY endogenous agglomeration equilibrium
@@ -329,5 +339,5 @@ Qⱼeq_open_end_ctf, w̃ⱼeq_open_end_ctf, θᵢeq_open_end_ctf, πᵢⱼeq_ope
                                                                                                                 endogenous_agglomeration = true, 
                                                                                                                 endo_params = endo_params, 
                                                                                                                 prices_guess = prices_guess,
-                                                                                                                tol_digits=2, damp_fact=0.25);
+                                                                                                                tol_digits=3, damp_fact=0.25);
 println("The population change from banning cars would be of: $(Int(round((H̃_open_end_ctf-H)/1000,digits=0)))k")

@@ -69,10 +69,6 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
     idx_emp = findall(pos_employment) ; idx_res = findall(pos_residence);
     n_places = size(Kᵢ,1); n_workplaces = size(idx_emp,1); n_residence = size(idx_res,1);
 
-    # initial guess for the equilibrium prices of the model
-    pg = isnothing(prices_guess) ? PricesGuess(n_places, pure_res, shared_space) : prices_guess
-    Qⱼ0 = copy(pg.Qⱼ0); w̃ⱼ0 = copy(pg.w̃ⱼ0); θᵢ0 = copy(pg.θᵢ0);
-
     # initializing variables to be updated in the loop
     Qⱼ1 = zeros(n_places); w̃ⱼ1 = zeros(n_places);
     θᵢ1 = zeros(n_places); H̃ₘⱼ = zeros(n_places); 
@@ -95,6 +91,10 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
     pure_res = @. $vec((Ãⱼ==0) & (B̃ᵢ>0)); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
     shared_space = @. $vec((Ãⱼ>0) & (B̃ᵢ>0)); # I should use {H̃ₘⱼ,H̃ᵣᵢ} but it is identical to using {Ãⱼ,B̃ᵢ}
 
+    # initial guess for the equilibrium prices of the model
+    pg = isnothing(prices_guess) ? PricesGuess(n_places, pure_res, shared_space) : prices_guess
+    Qⱼ0 = copy(pg.Qⱼ0); w̃ⱼ0 = copy(pg.w̃ⱼ0); θᵢ0 = copy(pg.θᵢ0);
+    
     # completely specialized blocks never change since amenity or productivity are zero  
     @. θᵢ1[pure_emp] = 1;
     @. θᵢ1[pure_res] = 0;
@@ -167,7 +167,7 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
         @. Qⱼ0 = (1-damp_fact) * Qⱼ0 + damp_fact * Qⱼ1 ;
         @. w̃ⱼ0 = (1-damp_fact) * w̃ⱼ0 + damp_fact * w̃ⱼ1 ;
         @. θᵢ0 = (1-damp_fact) * θᵢ0 + damp_fact * θᵢ1 ;
-        open_city && (H̃ = (1-(0.5*damp_fact)) * H̃ + (0.5*damp_fact) * H̃1) ; # only in the open city case. Damping the `damp_fact` even further because there is a strong positive feedback loop here, which is amplified due to ε being relatively large 
+        open_city && (H̃ = (1-(0.2*damp_fact)) * H̃ + (0.2*damp_fact) * H̃1) ; # only in the open city case. Damping the `damp_fact` even further because there is a strong positive feedback loop here, which is amplified due to ε being relatively large 
 
         # Print convergence rate
         println([iter, trunc(err_Q / tol, digits=0), trunc(err_w / tol, digits=0), trunc(err_θ / tol, digits=0), trunc(err_pop_uti / tol, digits=0)]);
