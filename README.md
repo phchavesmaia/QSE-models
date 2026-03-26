@@ -7,7 +7,8 @@ Importantly, I value code readability more than computational efficiency, partic
 It follows the roadmap of this repository:
 - [X] [Redding and Rossi-Hansberg (2017)](https://github.com/phchavesmaia/QSE-models/tree/main/models/redding_rossihansberg-2017)
 - [X] [Monte, Redding and Rossi-Hansberg (2018)](https://github.com/phchavesmaia/QSE-models/tree/main/models/monte_etal-2018)
-- [ ] [Ahfeldt et al. (2015)](https://github.com/phchavesmaia/QSE-models/tree/main/models/ahfeldt_etal-2015)
+- [X] [Ahfeldt et al. (2015)](https://github.com/phchavesmaia/QSE-models/tree/main/models/ahfeldt_etal-2015)
+- [ ] Tsivanidis (2026) 
 - [ ] Hörcher and Graham (2024)
 
 # Dependencies
