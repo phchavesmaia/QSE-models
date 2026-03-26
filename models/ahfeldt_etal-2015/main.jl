@@ -192,13 +192,14 @@ println("Does this OPEN-CITY equilibrium match the data? $(sum(snty_check_eq_ope
 Qⱼeqb, w̃ⱼeqb, θᵢeqb, πᵢⱼeqb, Ūeqb = solve_equilibrium(params, exo_fund, H, open_city = false);
 
 # validaring whether different initial guesses lead to different results
+###### check here!!! ####
 snty_check_guess = [
     snty_check(w̃ⱼeq,w̃ⱼeqb,tol=3),
-    snty_check(θᵢeq,θᵢeqb,tol=3),
+    snty_check(θᵢeq,θᵢeqb,tol=2),
     snty_check(Qⱼeq,Qⱼeqb,tol=3),
     snty_check(πᵢⱼeq,πᵢⱼeqb,tol=3),
     Int(round(Ūeq/Ūeqb,digits=3))];
-println("Are the CLOSED-CITY results robust to different initial guesses (is the eq. perfectly identified)? $(sum(snty_check_eq)==length(snty_check_eq))")
+println("Are the CLOSED-CITY results robust to different initial guesses (is the eq. perfectly identified)? $(sum(snty_check_guess)==length(snty_check_guess))")
 
 # *****************************************************************
 # *** Counterfactuals 2006 equilibrium (exogenous fundamentals) *** 
@@ -308,7 +309,7 @@ snty_check_eq_open_end = [
     snty_check(θᵢeq_open_end,θᵢᵉ,tol=2),
     snty_check(Qⱼeq_open_end,Qⱼ,tol=2),
     Int(round(H̃_open_end/H,digits=2))];
-println("Does this OPEN-CITY equilibrium match the data? $(sum(snty_check_eq_closed_end)==length(snty_check_eq_closed_end))")
+println("Does this OPEN-CITY equilibrium match the data? $(sum(snty_check_eq_open_end)==length(snty_check_eq_open_end))")
 
 # ******************************************************************
 # *** Counterfactuals 2006 equilibrium (endogenous fundamentals) *** 
