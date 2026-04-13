@@ -5,39 +5,45 @@ using ..Types: ModelParameters, EndogenousModelParameters, ExogenousFundamentals
 
 export solve_equilibrium, detangle_agglomeration
 
+"""
+This function assumes that you have predefined the parameters
+{α, β, κ, ε, μ}. If you are in the endogenous agglomeration
+forces case, you will also need {λ, δ, η, ρ}. It then solves 
+for the general equilibrium of the model given the structural 
+exogenous fundamentals:
+
+    1. Ãⱼ (or aⱼ) = workplace exogenous productivity;
+    2. B̃ᵢ (or bᵢ) = residential exogenous amenities;
+    3. φᵢ = density of development;
+    4. Kᵢ = geographical area; and
+    5. τᵢⱼ = bilateral travel time matrix.
+    
+The output of this function is the set of endogenous equilibrium
+variables {w̃ⱼ, θᵢ, Qⱼ, πᵢⱼ} that satisfy labor and land market
+clearing conditions. The exogenous equilibrium is defined in page 
+18 (2143) of the paper.  
+
+If you are in the CLOSED-CITY case, then:
+
+    a. H (total popolation) is an exogenous variable; and
+    b. Ū (reservation/wider economy utility level) is an endogenous variable.
+
+If you are in an OPEN-CITY case, then:
+
+    a. H (total popolation) is an endogenous variable; and
+    b. Ū (reservation/wider economy utility level) is an exogenous variable.
+
+--- IGNORE ---
+
+1.  This function solves for the equilibrium of the model by simultaneously
+    iterating over guesses of w̃ⱼ, θᵢ and Qⱼ until convergence is achieved, 
+    using a damping factor to ensure stability.
+2.  In the ARSW tookit, the tolerance is implicitly of 2 digits. I will be 
+    a little stricter and impose a 3-digit tolerance to leverage on Julia's
+    higher computational efficiency. This is different from the rest of the
+    functions which have a 6-digit tolerance as standard.
+"""
 function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundamentals, pop_uti::Float64; endogenous_agglomeration::Bool=false, endo_params::Union{EndogenousModelParameters, Nothing}=nothing, prices_guess::Union{PricesGuess, Nothing} = nothing, tol_digits::Int=3, iter_max::Int=1000, damp_fact::Float64 = 0.4, open_city::Union{Bool,Nothing}=nothing)
-    "
-        This function assumes that you have predefined the parameters
-        {α, β, κ, ε, μ}. If you are in the endogenous agglomeration
-        forces case, you will also need {λ, δ, η, ρ}. It then solves 
-        for the general equilibrium of the model given the structural 
-        exogenous fundamentals:
-            1. Ãⱼ/aⱼ = workplace exogenous productivity;
-            2. B̃ᵢ/bᵢ = residential exogenous amenities;
-            3. φᵢ = density of development;
-            4. Kᵢ = geographical area; and
-            5. τᵢⱼ = bilateral travel time matrix.
-        The output of this function is the set of endogenous equilibrium
-        variables {w̃ⱼ, θᵢ, Qⱼ, πᵢⱼ} that satisfy labor and land market
-        clearing conditions. The exogenous equilibrium is defined in page 
-        18 (2143) of the paper.  
-
-        If you are in the CLOSED-CITY case, then
-            a. H (total popolation) is an exogenous variable; and
-            b. Ū (reservation/wider economy utility level) is an endogenous variable.
-        If you are in an OPEN-CITY case, then
-            a. H (total popolation) is an endogenous variable; and
-            b. Ū (reservation/wider economy utility level) is an exogenous variable.
-
-        --- IGNORE ---
-        1.  This function solves for the equilibrium of the model by simultaneously
-            iterating over guesses of w̃ⱼ, θᵢ and Qⱼ until convergence is achieved, 
-            using a damping factor to ensure stability.
-        2.  In the ARSW tookit, the tolerance is implicitly of 2 digits. I will be 
-            a little stricter and impose a 3-digit tolerance to leverage on Julia's
-            higher computational efficiency. This is different from the rest of the
-            functions which have a 6-digit tolerance as standard.
-    "
     # checking if we are good to go
     if endogenous_agglomeration && isnothing(endo_params)
         ErrorException("The endogenous agglomeration equilibrium demands further the λ, δ, η, and ρ parameters.")
@@ -180,14 +186,14 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
     return open_city ? (Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, H̃) : (Qⱼ0, w̃ⱼ0, θᵢ0, πᵢⱼ, Ūcity) 
 end
 
+"""
+The function detangles the overall agglomeration forces {Ãⱼ,B̃ᵢ} into
+its endogenous and exogenous components {Υⱼ,Ωᵢ} and {aⱼ, bᵢ}, respectivelly.
+It assumes you provide the properly estimated {λ, δ, η, ρ} set of parameters.
+Importantly, it only reports the exogenous component of the agglomeration
+forces, since it is the only part that matters for estimating the GE model.   
+"""
 function detangle_agglomeration(params::EndogenousModelParameters, exo_fund::ExogenousFundamentals, Hₘⱼ::Vector{Float64}, Hᵣᵢ::Vector{Float64})
-    "
-    The function detangles the overall agglomeration forces {Ãⱼ,B̃ᵢ} into
-    its endogenous and exogenous components {Υⱼ,Ωᵢ} and {aⱼ, bᵢ}, respectivelly.
-    It assumes you provide the properly estimated {λ, δ, η, ρ} set of parameters.
-    Importantly, it only reports the exogenous component of the agglomeration
-    forces, since it is the only part that matters for estimating the GE model.   
-    "
     # unpacking parameters
     (; λ, δ, η, ρ) = params;
     (; Ãⱼ, B̃ᵢ, φᵢ, Kᵢ, τᵢⱼ) = exo_fund;

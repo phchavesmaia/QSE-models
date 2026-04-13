@@ -5,13 +5,13 @@ export get_ω, get_ε
 using SparseArrays, Optimization, OptimizationNLopt, StatsBase, Statistics, LinearAlgebra
 using ..Types: EstimationParameters, payroll_aggregator_parameters
 
+"""
+This function solves for TRANSFORMED wages (ωⱼ) for given values of
+workplace employment, residence employment, and bilateral commuting
+costs. If ε is not provided, it will be set to 1 so that you can 
+compute the initial guess of ω without having to compute ε first.
+"""
 function get_ω(Hₘⱼ::Vector{Float64},Hᵣᵢ::Vector{Float64},τᵢⱼ::Matrix{Float64},Qⱼ::Vector{Float64},params::EstimationParameters; tol_digits::Int=6, x_max::Int = 500, ε::Float64 = 1.0, damp_fact::Float64 = 0.5)
-    "
-    This function solves for TRANSFORMED wages (ωⱼ) for given values of
-    workplace employment, residence employment, and bilateral commuting
-    costs. If ε is not provided, it will be set to 1 so that you can 
-    compute the initial guess of ω without having to compute ε first.
-    "
     # initiate main loop and output variables
     n_places = size(Hₘⱼ,1);
     ωⱼ  = zeros(n_places); Ĥₘⱼ = zeros(n_places);
@@ -65,14 +65,14 @@ function get_ω(Hₘⱼ::Vector{Float64},Hᵣᵢ::Vector{Float64},τᵢⱼ::Matr
     return ωⱼ, Ĥₘⱼ
 end
 
+"""
+The su (spatial unit) variable is a map between smaller
+spatial units, such as blocks, to larger spatial
+units (lsu), such as districts. Each line of `spatial_unit`
+regards a specific su in accordance to the row number, 
+whereas its values correspond to the lsu. 
+"""
 function payroll_aggregator(su::Vector{Int})
-    "
-    The su (spatial unit) variable is a map between smaller
-    spatial units, such as blocks, to larger spatial
-    units (lsu), such as districts. Each line of `spatial_unit`
-    regards a specific su in accordance to the row number, 
-    whereas its values correspond to the lsu. 
-    "
     lsu = unique(su);
     n_su = length(su);
 
@@ -88,11 +88,11 @@ function payroll_aggregator(su::Vector{Int})
     return S
 end
 
+"""
+Defining the objective function of the minimization problem
+to find ε.
+"""
 function get_fϵ(u::Vector{Float64},p::payroll_aggregator_parameters)
-    "
-    Defining the objective function of the minimization problem
-    to find ε.
-    "
     
     # *************************
     # *** Unpack parameters ***
@@ -135,6 +135,9 @@ function get_fϵ(u::Vector{Float64},p::payroll_aggregator_parameters)
     return ftt
 end
 
+"""
+Minimization algorithm that recovers the Frechet parameter ε.
+"""
 function get_ε(Vlwⱼ::Float64,Hₘⱼ::Vector{Float64},Hᵣᵢ::Vector{Float64},τᵢⱼ::Matrix{Float64},Qⱼ::Vector{Float64},params::EstimationParameters; su::Vector{Int}=vec(1:length(Qⱼ)), tol_digits::Int=6, ε0::Int=4, maxiter::Int=1000)
     
     # *****************************************

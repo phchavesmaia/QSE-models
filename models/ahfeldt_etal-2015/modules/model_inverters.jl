@@ -6,12 +6,12 @@ using StatsBase
 using ..Types: ModelParameters, EstimationParameters, InverterInputs
 using ..FrechetEstimation: get_ω
 
+"""
+This function aggregates both the simultaneous and sequential
+methods to invert the model, allowing for the option of which
+one to choose. 
+"""
 function invert_model(params::ModelParameters, inputs::InverterInputs;  tol_digits::Int=6, iter_max::Int=1000, method::String="sequential", stop_rule::String="codebook", damp_fact::Float64 = 0.5)
-    "
-    This function aggregates both the simultaneous and sequential
-    methods to invert the model, allowing for the option of which
-    one to choose. 
-    "
     # method checking
     if method=="sequential"
         Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA = cal_model_seq(params, inputs; tol_digits=tol_digits, iter_max=iter_max, damp_fact=damp_fact)
@@ -24,28 +24,34 @@ function invert_model(params::ModelParameters, inputs::InverterInputs;  tol_digi
     return Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end
 
+"""
+This function assumes that you have predefined the parameters
+ε, κ, α, β, and μ. It then computes the structural fundamentals 
+of the model given the observed ('real world') equilibrium
+variables:
+
+    1. Qⱼ = rent prices; 
+    2. Hₘⱼ = workplace employment (population);
+    3. Hᵣᵢ = residential employment (population);
+
+And the exogenous fundamentals:
+
+    1. τᵢⱼ = bilateral travel time matrix s.t. rows (i) denote 
+        residences and columns (j) denote workplaces; and
+    2. Kᵢ = geographical area (unkown unit).
+
+The output of this function is the set of structural fundamentals and
+endogenous variales of of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, 
+θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that are consistent with the observed equilibrium.
+
+--- IGNORE ---
+
+This function solves for the equilibrium of the model by iterating 
+over wages to assess for the equilibrium productivity. All else is
+sequentially (and algebraically) derived from these results, being 
+(re)scaled to match the data.
+"""
 function cal_model_seq(params::ModelParameters, inputs::InverterInputs; tol_digits::Int=6, iter_max::Int=1000, damp_fact::Float64 = 0.5)
-    "
-    This function assumes that you have predefined the parameters
-    ε, κ, α, β, and μ. It then computes the structural fundamentals 
-    of the model given the observed ('real world') equilibrium
-    variables:
-        1. Qⱼ = rent prices; 
-        2. Hₘⱼ = workplace employment (population);
-        3. Hᵣᵢ = residential employment (population);
-    And the exogenous fundamentals
-        1. τᵢⱼ = bilateral travel time matrix s.t. rows (i) denote 
-            residences and columns (j) denote workplaces; and
-        2. Kᵢ = geographical area (unkown unit).
-    The output of this function is the set of structural fundamentals and
-    endogenous variales of of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, 
-    θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA) that are consistent with the observed equilibrium.
-    --- IGNORE ---
-    This function solves for the equilibrium of the model by iterating 
-    over wages to assess for the equilibrium productivity. All else is
-    sequentially (and algebraically) derived from these results, being 
-    (re)scaled to match the data.
-    "
     # Unpacking parameters
     (; α, β, μ, κ, ε) = params; ν = κ * ε;
     (; Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, Kᵢ) = inputs;
@@ -148,31 +154,38 @@ function cal_model_seq(params::ModelParameters, inputs::InverterInputs; tol_digi
     return Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, H̃ₘⱼ, H̃ᵣᵢ, CMA
 end
 
+"""
+This function assumes that you have predefined the parameters
+ε, κ, α, β, and μ. It then computes the structural fundamentals 
+of the model given the observed ('real world') equilibrium
+variables:
+
+    1. Qⱼ = rent prices; 
+    2. Hₘⱼ = workplace employment (population);
+    3. Hᵣᵢ = residential employment (population);
+
+and structural fundamentals:
+
+    1. τᵢⱼ = bilateral travel time matrix s.t. rows (i) denote 
+        residences and columns (j) denote workplaces; and
+    2. Kᵢ = geographical area (unkown unit).
+
+The output of this function is the set of structural fundamentals and
+endogenous variables of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, 
+H̃ₘⱼ, H̃ᵣᵢ, CMA) that are consistent with the observed equilibrium.
+
+--- IGNORE ---
+
+1.  This function solves for the equilibrium of the model by simultaneously
+    iterating over guesses of Ãⱼ and B̃ᵢ up until convergence is achieved.
+
+2.  The `stop_rule` argument indicates which convergence rule to use. If
+    'codebook' is the chosen one, it will converge based on changes in
+    Ãⱼ and B̃ᵢ, as stated in the codebook. Otherwise, it will update as
+    does the `cmodexog.m` function, that is, based on changes in 
+    abs(Hₘⱼ-H̃ₘⱼ) and abs(Hᵣᵢ-H̃ᵣᵢ).
+"""
 function cal_model_sim(params::ModelParameters, inputs::InverterInputs; tol_digits::Int=6, iter_max::Int=1000, stop_rule::String = "codebook", damp_fact::Float64 = 0.5)
-    "
-    This function assumes that you have predefined the parameters
-    ε, κ, α, β, and μ. It then computes the structural fundamentals 
-    of the model given the observed ('real world') equilibrium
-    variables:
-        1. Qⱼ = rent prices; 
-        2. Hₘⱼ = workplace employment (population);
-        3. Hᵣᵢ = residential employment (population);
-    and structural fundamentals:
-        1. τᵢⱼ = bilateral travel time matrix s.t. rows (i) denote 
-            residences and columns (j) denote workplaces; and
-        2. Kᵢ = geographical area (unkown unit).
-    The output of this function is the set of structural fundamentals and
-    endogenous variables of the model (Ãⱼ, B̃ᵢ, w̃ⱼ, πᵢⱼ, Tw̃ᵢ, ϕᵢ, Lᵢᴰ, θᵢ, 
-    H̃ₘⱼ, H̃ᵣᵢ, CMA) that are consistent with the observed equilibrium.
-    --- IGNORE ---
-    1.  This function solves for the equilibrium of the model by simultaneously
-        iterating over guesses of Ãⱼ and B̃ᵢ up until convergence is achieved.
-    2.  The `stop_rule` argument indicates which convergence rule to use. If
-        'codebook' is the chosen one, it will converge based on changes in
-        Ãⱼ and B̃ᵢ, as stated in the codebook. Otherwise, it will update as
-        does the `cmodexog.m` function, that is, based on changes in 
-        abs(Hₘⱼ-H̃ₘⱼ) and abs(Hᵣᵢ-H̃ᵣᵢ).
-    "
     # Unpacking parameters
     (; α, β, μ, κ, ε) = params;
     (; Qⱼ, Hₘⱼ, Hᵣᵢ, τᵢⱼ, Kᵢ) = inputs;
