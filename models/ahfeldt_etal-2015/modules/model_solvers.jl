@@ -123,8 +123,8 @@ function solve_equilibrium(params::ModelParameters, exo_fund::ExogenousFundament
     else 
         println(">>>> Solving the closed-city exogenous agglomeration equilibrium <<<<")
     end
-
-    while ((err_Q >= tol) || (err_w >= tol) || (err_θ >= tol) || (err_pop_uti >= tol)) && (iter <= iter_max)
+    
+    while ((err_Q ≥ tol) || (err_w ≥ tol) || (err_θ ≥ tol) || (err_pop_uti ≥ tol)) && (iter ≤ iter_max)
         # updating endogenous variables by solving the model equations
 
         # --- πᵢⱼ through eq. 4 ---

@@ -213,7 +213,7 @@ function cal_model_sim(params::ModelParameters, inputs::InverterInputs; tol_digi
     
     # initiate the model loop
     println(">>>> Calibrating Ã and B̃ <<<<")
-    while  ((err_Ãⱼ >= tol) || (err_B̃ᵢ >= tol)) && (iter <= iter_max)
+    while  ((err_Ãⱼ ≥ tol) || (err_B̃ᵢ ≥ tol)) && (iter ≤ iter_max)
         
         # Guess wages using the first-order condition (eq. 12)
         @. w̃ⱼ[pos_employment] = (((1-α)/Qⱼ[pos_employment])^((1-α)/α))*α*(Ãⱼ0[pos_employment]^(1/α));
