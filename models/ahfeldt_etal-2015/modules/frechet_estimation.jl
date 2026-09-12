@@ -68,15 +68,15 @@ end
 """
 The su (spatial unit) variable is a map between smaller
 spatial units, such as blocks, to larger spatial
-units (lsu), such as districts. Each line of `spatial_unit`
-regards a specific su in accordance to the row number, 
-whereas its values correspond to the lsu. 
+units (lsu), such as districts. Each line of `su`
+corresponds to a spatial unit in accordance to its row number, 
+whereas the values denotes the corresponding to the lsu. 
 """
 function payroll_aggregator(su::Vector{Int})
     lsu = unique(su);
     n_su = length(su);
 
-    # indexing the lsu
+    # indexing the lsu (key 1000 => val 1; key 2000 => val 2)
     lsu_map = Dict(id => i for (i,id) in enumerate(lsu));
 
     # building sparse matrix A where A[lsu_index,su_index] = 1, i.e., 
@@ -84,7 +84,7 @@ function payroll_aggregator(su::Vector{Int})
     I = vec([lsu_map[id] for id in su]); # translates su values (lsu code) to index (lsu_map values)
     J = 1:n_su;
     V = ones(n_su);
-    S = sparse(I, J, V); 
+    S = sparse(I, J, V); # S of dimensions unique(I) x unique(J) such that S[I[k], J[k]] = V[k]
     return S
 end
 
