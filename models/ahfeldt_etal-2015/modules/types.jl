@@ -50,8 +50,9 @@ function PricesGuess(n_places::Int, pure_res::AbstractVector{Bool}, shared_space
     return PricesGuess(Q, w, θ)
 end
 
-struct payroll_aggregator_parameters
-    S::SparseMatrixCSC{Int, Int}
+struct frechet_estimation_parameters
+    lsu_index::Vector{Int}
+    n_lsu::Int
     Hₘⱼ::Vector{Float64}
     ωⱼ::Vector{Float64}
     Vlwⱼ::Float64

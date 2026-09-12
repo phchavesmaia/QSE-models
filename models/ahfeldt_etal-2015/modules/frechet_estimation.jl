@@ -3,7 +3,7 @@ module FrechetEstimation
 export get_ω, get_ε
 
 using SparseArrays, Optimization, OptimizationNLopt, StatsBase, Statistics, LinearAlgebra
-using ..Types: EstimationParameters, payroll_aggregator_parameters
+using ..Types: EstimationParameters, frechet_estimation_parameters
 
 """
 This function solves for TRANSFORMED wages (ωⱼ) for given values of
@@ -66,39 +66,35 @@ function get_ω(Hₘⱼ::Vector{Float64},Hᵣᵢ::Vector{Float64},τᵢⱼ::Matr
 end
 
 """
-The su (spatial unit) variable is a map between smaller
-spatial units, such as blocks, to larger spatial
-units (lsu), such as districts. Each line of `su`
-corresponds to a spatial unit in accordance to its row number, 
-whereas the values denotes the corresponding to the lsu. 
+`aggregate_wages` function aggregates payroll and labor 
+from smaller spatial units (su) to larger spatial units (lsu) 
+and computes the average wage at the lsu level.
 """
-function payroll_aggregator(su::Vector{Int})
-    lsu = unique(su);
-    n_su = length(su);
+function aggregate_wages(payroll_su, Hₘⱼ, lsu_index, n_lsu)
+    payroll_lsu = zeros(n_lsu)
+    labor_lsu   = zeros(n_lsu)
 
-    # indexing the lsu (key 1000 => val 1; key 2000 => val 2)
-    lsu_map = Dict(id => i for (i,id) in enumerate(lsu));
+    for j in eachindex(lsu_index)
+        k = lsu_index[j]
 
-    # building sparse matrix A where A[lsu_index,su_index] = 1, i.e., 
-    # it indicates 1 if a su is part of a lsu. Naturally, A is n_lsu x n_su.
-    I = vec([lsu_map[id] for id in su]); # translates su values (lsu code) to index (lsu_map values)
-    J = 1:n_su;
-    V = ones(n_su);
-    S = sparse(I, J, V); # S of dimensions unique(I) x unique(J) such that S[I[k], J[k]] = V[k]
-    return S
+        payroll_lsu[k] += payroll_su[j]
+        labor_lsu[k]   += Hₘⱼ[j]
+    end
+
+    return payroll_lsu ./ labor_lsu
 end
 
 """
 Defining the objective function of the minimization problem
 to find ε.
 """
-function get_fϵ(u::Vector{Float64},p::payroll_aggregator_parameters)
+function get_fϵ(u::Vector{Float64},p::frechet_estimation_parameters)
     
     # *************************
     # *** Unpack parameters ***
     # *************************
     ε = u[1];
-    (; S, Hₘⱼ, ωⱼ, Vlwⱼ) = p;
+    (; lsu_index, n_lsu, Hₘⱼ, ωⱼ, Vlwⱼ) = p;
 
     # *******************
     # ****** Wages ******
@@ -109,12 +105,8 @@ function get_fϵ(u::Vector{Float64},p::payroll_aggregator_parameters)
     @. w̃ⱼ[w̃ⱼ.>0] = w̃ⱼ[w̃ⱼ.>0] / $geomean(w̃ⱼ[w̃ⱼ.>0]); # normalizing after the change
     payroll_su = @. w̃ⱼ * Hₘⱼ;
 
-    # aggregating payroll and labor to lsu levels
-    payroll_lsu = S * payroll_su;
-    labor_lsu = S * Hₘⱼ;
-
     # getting wages at the lsu level
-    w̃ⱼ_lsu = @. payroll_lsu / labor_lsu;
+    w̃ⱼ_lsu = aggregate_wages(payroll_su, Hₘⱼ, lsu_index, n_lsu);
     lw̃ⱼ_lsu = log.(w̃ⱼ_lsu);                                                  
     @. lw̃ⱼ_lsu = lw̃ⱼ_lsu - $mean(lw̃ⱼ_lsu); # demean                                                
     Vlw̃ⱼ_lsu = var(lw̃ⱼ_lsu);
@@ -150,8 +142,13 @@ function get_ε(Vlwⱼ::Float64,Hₘⱼ::Vector{Float64},Hᵣᵢ::Vector{Float64
     # ******* Defining optimazation parameters *******
     # ************************************************
 
-    S = payroll_aggregator(su);
-    p = payroll_aggregator_parameters(S, Hₘⱼ, ωⱼ, Vlwⱼ);
+    # setup for lsu mapping
+    lsu_map = Dict(id => i for (i,id) in enumerate(unique(su))); # remember su lines indicate a block and their values correspond to the lsu (larger spatial unit)
+    lsu_index = [lsu_map[id] for id in su];
+    n_lsu = length(lsu_map);
+
+    # setup parameters
+    p = frechet_estimation_parameters(lsu_index, n_lsu, Hₘⱼ, ωⱼ, Vlwⱼ);
     u0 = [ε0];
 
     # ***************************

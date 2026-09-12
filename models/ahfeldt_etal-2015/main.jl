@@ -5,7 +5,7 @@
 # activate and instantiate project 
 using Pkg
 try 
-    cd("/home/phchavesmaia/Dropbox/learn-julia/qse/")
+    cd("/mnt/storage/Dropbox/learn-julia/qse")
 catch
     cd("C:/Users/pedro.maia/Dropbox/learn-julia/qse/")
 end
